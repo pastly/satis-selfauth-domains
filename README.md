@@ -1,0 +1,1 @@
+# satis-selfauth-domains
