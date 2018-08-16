@@ -1,3 +1,0 @@
-# satis-selfauth-domains
-
-Placeholder
