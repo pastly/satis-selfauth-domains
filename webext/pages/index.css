@@ -1,0 +1,38 @@
+#content {
+    max-width: 800px;
+    background-color: #fff;
+    border: 8px solid #ddd;
+    margin: auto;
+    padding: 10px;
+}
+
+#urlDomain, #visitingDomain, #expectedDomain {
+    font-size: small;
+}
+#usedCert, #expectedCert {
+    font-size: small;
+}
+
+body {
+    background-color: #eee
+}
+
+.good {
+    color: #080;
+}
+
+.bad, #errorMessage {
+    color: #a00;
+}
+
+table {
+    border-collapse: collapse;
+    margin-top: 30px;
+}
+table th, table td {
+    border: 1px solid #000;
+}
+
+.hidden {
+    display: none;
+}

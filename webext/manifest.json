@@ -1,0 +1,34 @@
+{
+    "manifest_version": 2,
+    "name": "Alliuminate webext",
+    "version": "0.0",
+    "description": "Do not want",
+    "icons": {
+        "48": "icons/icon-48.png"
+    },
+    "permissions": [
+        "activeTab",
+        "webRequest",
+        "webRequestBlocking",
+        "<all_urls>"
+    ],
+    "browser_action": {
+        "browser_style": true,
+        "default_icon": "icons/icon-48.png",
+        "default_title": "Please click",
+        "default_popup": "popup/index.html"
+    },
+    "background": {
+        "scripts": [
+            "lib/nacl_factory.js",
+            "lib/sha3.js",
+            "lib/base32.js",
+            "lib/log.js",
+            "lib/onion.js",
+            "background.js"
+        ]
+    },
+    "web_accessible_resources": [
+        "pages/*.html"
+    ]
+}
