@@ -29,14 +29,16 @@ nginx.conf.tmpl
   The starting point for an nginx config file. When parsed, it configures nginx
   to add the necessary HTTP headers to its responses for our extension to work.
 
-tor-satis-diff.patch
+tor/
 
-  All the code changes that need to be applied to Tor version 0.3.2.10 in order
-  to make it sign the data necessary for our extension to work.
+  A git submodule pointing to the Tor code that has the necessary changes to
+  generate these signatures. If you want to get it manually for some reason,
+  it's the branch selfauth-sig-0.3.5.7 at https://github.com/pastly/public-tor
 
-tor.tar.xz
+tor.selfauth-sig-0.3.5.7.tar.xz
 
-  The entirety of the Tor codebase, including our changes.
+  The Tor code as of my branch selfauth-sig-0.3.5.7 in case this is easier for
+  you than a submodule.
 
 update-satis-sig-nginx-conf.sh
 
