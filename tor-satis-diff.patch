@@ -81,7 +81,7 @@ index fa5c1ab17..92cffc526 100644
    return 0;
   err:
 diff --git a/src/or/hs_service.c b/src/or/hs_service.c
-index 45810c5c5..aca50c914 100644
+index 45810c5c5..c676466f7 100644
 --- a/src/or/hs_service.c
 +++ b/src/or/hs_service.c
 @@ -66,6 +66,11 @@
@@ -209,7 +209,7 @@ index 45810c5c5..aca50c914 100644
 +  const char *fingerprint = "DEADBEEF111111111111";
 +
 +  char *domain = NULL;
-+  tor_asprintf(&domain, "%s.onion.%s", service->onion_address,
++  tor_asprintf(&domain, "%sonion.%s", service->onion_address,
 +      service->config.satis_domain);
 +
 +  ed25519_keypair_t keypair;
@@ -241,7 +241,7 @@ index 45810c5c5..aca50c914 100644
 +  const char *fingerprint = service->config.satis_fingerprint;
 +
 +  char *domain = NULL;
-+  tor_asprintf(&domain, "%s.onion.%s", service->onion_address,
++  tor_asprintf(&domain, "%sonion.%s", service->onion_address,
 +      service->config.satis_domain);
 +
 +  ed25519_keypair_t keypair;
@@ -273,7 +273,7 @@ index 45810c5c5..aca50c914 100644
 +  const char *fingerprint = service->config.satis_fingerprint;
 +
 +  char *domain = NULL;
-+  tor_asprintf(&domain, "%s.onion.notmyname.com", service->onion_address);
++  tor_asprintf(&domain, "%sonion.notmyname.com", service->onion_address);
 +
 +  ed25519_keypair_t keypair;
 +  keypair.seckey = service->keys.identity_sk;
@@ -304,7 +304,7 @@ index 45810c5c5..aca50c914 100644
 +  const char *fingerprint = service->config.satis_fingerprint;
 +
 +  char *domain = NULL;
-+  tor_asprintf(&domain, "%s.onion.%s", service->onion_address,
++  tor_asprintf(&domain, "%sonion.%s", service->onion_address,
 +      service->config.satis_domain);
 +
 +  ed25519_keypair_t keypair;
@@ -340,7 +340,7 @@ index 45810c5c5..aca50c914 100644
 +  const char *fingerprint = service->config.satis_fingerprint;
 +
 +  char *domain = NULL;
-+  tor_asprintf(&domain, "%s.onion.%s", service->onion_address,
++  tor_asprintf(&domain, "%sonion.%s", service->onion_address,
 +      service->config.satis_domain);
 +
 +  ed25519_keypair_t keypair;
