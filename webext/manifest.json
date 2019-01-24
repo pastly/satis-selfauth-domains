@@ -1,10 +1,10 @@
 {
     "manifest_version": 2,
-    "name": "Alliuminate webext",
-    "version": "0.0",
-    "description": "Do not want",
+    "name": "Alliuminate the Web",
+    "version": "0.2.0",
+    "description": "Weaving self-authentication into the web",
     "icons": {
-        "48": "icons/icon-48.png"
+        "48": "icons/onion-48.png"
     },
     "permissions": [
         "activeTab",
@@ -14,17 +14,26 @@
     ],
     "browser_action": {
         "browser_style": true,
-        "default_icon": "icons/icon-48.png",
-        "default_title": "Please click",
+        "default_icon": "icons/onion-48.png",
+        "default_title": "Alliuminate the Web",
         "default_popup": "popup/index.html"
     },
     "background": {
         "scripts": [
-            "lib/nacl_factory.js",
-            "lib/sha3.js",
-            "lib/base32.js",
+            "lib/header.js",
             "lib/log.js",
+            "lib/utils.js",
+            "lib/base32.js",
+            "lib/sha3.js",
+            "lib/asn1js/hex.js",
+            "lib/asn1js/base64.js",
+            "lib/asn1js/oids.js",
+            "lib/asn1js/int10.js",
+            "lib/asn1js/asn1.js",
+            "lib/altsvc.js",
             "lib/onion.js",
+            "lib/secinfo.js",
+            "lib/nacl_factory.js",
             "background.js"
         ]
     },
@@ -32,3 +41,4 @@
         "pages/*.html"
     ]
 }
+

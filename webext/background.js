@@ -1,79 +1,20 @@
 var nacl = null;
 
-function splitURL(url) {
-    // Let the browser do the work
-    var l = document.createElement("a");
-    l.href = url;
-    // see .protocol, .hostname, and .pathname of returned object
-    return l
-}
-
-function satisDomainToRegular(host) {
-    // take aaaabbbbbcccc.onion.example.com and return example.com
-    // return nulll if input isn't a satis domain
-    if (!log_assert(onion_v3extractFromDomain(host)))
-        return null;
-    return host.substring(56 + ".onion.".length);
-}
-
-function byteStringToUint8Array(s) {
-    let arr = new Uint8Array(s.length);
-    for (let i = 0; i < s.length; i++) {
-        arr[i] = s.charCodeAt(i);
-    }
-    return arr;
-}
-
-function parseSubjectFromSecurityInfo(securityInfo) {
-    let str = securityInfo.certificates[0].ASN1Objects[0].children[5]['value'];
-    let splits = str.split("\n");
-    for (let str of splits) {
-        if (str.length < 1)
-            continue;
-        if (str.substring(0, 2) != "CN")
-            continue;
-        return str.split(" = ")[1];
-    }
-}
-
-function parseSubjectAltsFromSecurityInfo(securityInfo) {
-    let alts = [];
-    let extensions = securityInfo.certificates[0].ASN1Objects[0].children[7].children;
-    for (let ext of extensions) {
-        if (ext.name != "Certificate Subject Alt Name")
-            continue;
-        let splits = ext.value.split("\n");
-        for (let str of splits) {
-            if (str.substring(0, 10) != "DNS Name: ")
-                continue;
-            alts.push(str.substring(10));
-        }
-    }
-    return alts;
-}
-
-function parseFingerprintFromSecurityInfo(securityInfo) {
-    let fp = securityInfo.certificates[0].fingerprint.sha256;
-    return fp.replace(/:/g, "");
-}
-
-function parseTLSVersionFromSecurityInfo(securityInfo) {
-    return securityInfo.protocolVersion;
-}
-
-function parseValidityFromSecurityInfo(securityInfo) {
-    /* See .startGMT and .endGMT and pass those strings to Date.parse */
-    return securityInfo.certificates[0].validity;
-}
+var preload = {
+    'satis.system33.pw': {
+        'alts': ['hllvtjcjomneltczwespyle2ihuaq5hypqaavn3is6a7t2dojuaa6rydonion.satis.system33.pw']
+    },
+};
 
 function certContainsProperNames(urlDomain, subject, subjectAlts) {
-    if (!log_assert(onion_v3extractFromDomain(urlDomain), "Should have",
-            "already determined that urlDomain isn't a Alliuminate domain.")) {
+    if (!log_assert(onion_v3extractFromPossibleAlliuminatedDomain(urlDomain),
+        "Should have already determined that urlDomain isn't ",
+        "a Alliuminated domain.")) {
         return false;
     }
     let urlBase = onion_extractBaseDomain(urlDomain);
-    if (!log_assert(urlBase, "Should have been able to get the base domain",
-            "from Alliuminate domain", urlDomain)) {
+    if (!log_assert(urlBase, "Should have been able to get the base ",
+        "domain from Alliuminate domain", urlDomain)) {
         return false;
     }
     if (urlBase != subject) {
@@ -82,140 +23,17 @@ function certContainsProperNames(urlDomain, subject, subjectAlts) {
         return false;
     }
     if (!subjectAlts.includes(urlDomain)) {
-        log_debug("Cert does not contain proper names because", urlDomain,
-            "is not in the subjectAlts", subjectAlts);
+        log_debug("Cert does not contain proper names because",
+            urlDomain, "is not in the subjectAlts", subjectAlts);
         return false;
     }
-    log_debug("Yes cert checks out.", urlBase, "is subject and",
-        urlDomain, "is in subjectAlts");
+    //log_debug("Yes cert checks out.", urlBase, "is subject and",
+    //    urlDomain, "is in subjectAlts");
     return true;
 }
 
-function satisSignatureValidInTime(satisHeaderValue, securityInfo) {
-    let certValidity = parseValidityFromSecurityInfo(securityInfo);
-    let certStart = Date.parse(certValidity.startGMT) / 1000;
-    let certEnd = Date.parse(certValidity.endGMT) / 1000;
-    let sigStart = satisHeaderValue.timeCenter - satisHeaderValue.timeWindow / 2;
-    let sigEnd = satisHeaderValue.timeCenter + satisHeaderValue.timeWindow / 2;
-    let now = Date.now() / 1000;
-    if (sigStart < certStart) {
-        // If the signature claims to be valid before the beginning of the
-        // certificate's validity, don't let it be
-        sigStart = certStart;
-    }
-    if (sigEnd > certEnd) {
-        // If the signature claims to be valid after the end of the
-        // certificate's validity, don't let it be
-        sigEnd = certEnd;
-    }
-    //let secondsAfterStart = now - sigStart;
-    //let secondsBeforeEnd = sigEnd - now;
-    //log_debug("Signature been valid for", secondsAfterStart,
-    //    "secs and will stop being valid in", secondsBeforeEnd, "secs")
-    return now >= sigStart && now <= sigEnd;
-}
-
-function getSatisHeaderValue(responseHeaders) {
-    for (let header of responseHeaders) {
-        if (header.name == "X-Alliuminate")
-            return header.value;
-    }
-    return null;
-}
-
-function parseSatisHeaderValue(onion, base64Value) {
-    let a = new SatisHeaderValue(nacl, onion, base64Value);
-    return a;
-}
-
-function testListener(details) {
-    let requestType = details.type;
-    log_object(details);
-    if (requestType != "main_frame") {
-        log_debug("Ignoring request type", requestType);
-        return;
-    }
-    let securityInfo = details.securityInfo;
-    if (securityInfo.state != "secure")
-        return;
-
-
-    let url = splitURL(details.url);
-    if (!onion_v3extractFromDomain(url.hostname)) {
-        log_debug("No longer considering", url.hostname, "because it does",
-            "not appear to be a Alliuminate domain.");
-        return;
-    }
-
-    //
-    // At this point, we are visiting a satis domain name, but we known nothing
-    // else. We don't know if the proper domains are in the TLS cert. We don't
-    // know if the SATIS HTTP header was provided. We don't know if the SATIS
-    // HTTP header checks out.
-    //
-
-    let subject = parseSubjectFromSecurityInfo(securityInfo);
-    let subjectAlts = parseSubjectAltsFromSecurityInfo(securityInfo);
-    let fingerprint = parseFingerprintFromSecurityInfo(securityInfo);
-    let responseHeaders = details.responseHeaders;
-    let satisHeaderValue = null;
-    let errorMessage = null;
-
-    if (!certContainsProperNames(url.hostname, subject, subjectAlts)) {
-        errorMessage = "The TLS certificate does not have the proper " +
-            "hostnames in the right places.";
-        return generateRedirect(satisHeaderValue, url.hostname, fingerprint,
-            errorMessage);
-    }
-    let onion = onion_v3extractFromDomain(url.hostname);
-    if (!log_assert(onion))
-        return;
-    onion = new Onion(onion);
-    satisHeaderValue = getSatisHeaderValue(responseHeaders);
-    if (!satisHeaderValue) {
-        log_debug("No longer considering", url.hostname, "because the",
-            "webserver didn't provide a Alliuminate HTTP header");
-        errorMessage = "The webserver didn't provide a Alliuminate HTTP header.";
-        return generateRedirect(satisHeaderValue, url.hostname, fingerprint,
-            errorMessage);
-    }
-
-    satisHeaderValue = parseSatisHeaderValue(onion, satisHeaderValue);
-
-    log_object(satisHeaderValue);
-
-    if (!satisHeaderValue.validSig) {
-        errorMessage = "The signature in the Alliuminate HTTP header is not "+
-            "valid. Either it is malformed or it was generated with the "+
-            "wrong key.";
-    } else if (!satisHeaderValue.readAllBytes) {
-        errorMessage = "The Alliuminate HTTP header had extra data.";
-    } else if (!satisSignatureValidInTime(satisHeaderValue, securityInfo)) {
-        errorMessage = "The Alliuminate signature is not considered valid at "+
-            "this time.";
-    } else if (fingerprint != satisHeaderValue.fingerprint) {
-        errorMessage = "The fingerprint in the TLS cert doesn't match the "+
-            "one in the Alliuminate HTTP header.";
-    } else if (url.hostname != satisHeaderValue.domain) {
-        errorMessage = "The domain in the Alliuminate HTTP header is not the "+
-            "one we are visiting.";
-    } else if (!satisHeaderValue.validSig) {
-        log_debug("The signature in the X-Alliuminate header didn't check "+
-            "out.");
-        errorMessage = "The signature in the Alliuminate HTTP header didn't "+
-            "check out.";
-    }
-
-    if (!errorMessage) {
-        return;
-    }
-    return generateRedirect(satisHeaderValue, url.hostname, fingerprint,
-        errorMessage);
-
-}
-
 function generateRedirect(satisHeaderValue, urlHostname, tlsFingerprint,
-        errorMessage) {
+    errorMessage) {
     let pageURL = browser.extension.getURL("pages/index.html");
     let validSig = satisHeaderValue ? satisHeaderValue.validSig : null;
     let domain = satisHeaderValue ? satisHeaderValue.domain : null;
@@ -233,27 +51,341 @@ function generateRedirect(satisHeaderValue, urlHostname, tlsFingerprint,
     return { "redirectUrl": pageURL };
 }
 
-function addParam(url, param, value) {
-   var a = document.createElement('a'), regex = /(?:\?|&amp;|&)+([^=]+)(?:=([^&]*))*/g;
-   var match, str = []; a.href = url; param = encodeURIComponent(param);
-   while (match = regex.exec(a.search))
-       if (param != match[1]) str.push(match[1]+(match[2]?"="+match[2]:""));
-   str.push(param+(value?"="+ encodeURIComponent(value):""));
-   a.search = str.join("&");
-   return a.href;
+function _return_without_altsvc_header(headers) {
+    headers = headers.filter(h => h.name != 'alt-svc')
+    //headers.push({'name': 'removed-alt-svc', 'value': 'yes'});
+    //log_object(headers);
+    return {'responseHeaders': headers};
 }
 
+function _returnWithSelectAltSvcHeaders(headers, altsvcHeaders) {
+    // Return with alt-svc headers filtered out of *headers* and the contents
+    // of *altsvc_headers* put into it instead
+    headers = headers.filter(h => h.name != 'alt-svc')
+    // The spread operator, used like python's extend() method on arrays
+    headers.push(...altsvcHeaders);
+    return {'responseHeaders': headers};
+}
 
-function addHTTPSEventListeners() {
-    //browser.webRequest.onCompleted.addListener(
+/**
+ * Determine if we should keep an alt-svc header.
+ *
+ * If it's not a special one that we care about having extra restrictions,
+ * return true.
+ *
+ * If it's a special one -- an onion address or an alliuminated domain -- then
+ * return false if it doesn't pass the extra restirctions. If it does pass,
+ * return the OnionSig object.
+ */
+function _shouldKeepAltSvcHeader(as, headers, origin) {
+
+    let onion = null;
+    let is_allium_domain = false;
+    let is_onion_domain = false;
+    // Is it a alliuminated name?
+    onion = onion_v3extractFromPossibleAlliuminatedDomain(as.domain);
+    if (!onion) {
+        // Is it a v3 onion?
+        onion = onion_v3extractFromPossibleOnionDomain(as.domain);
+        if (onion) {
+            is_onion_domain = true;
+        }
+    } else {
+        is_allium_domain = true;
+    }
+
+    // Not either, so just give it to the user
+    if (!onion) {
+        return true;
+    }
+    onion = new Onion(onion);
+
+    /*
+     * There's an AltSvc header and it is either for a .onion or an
+     * alliuminated domain name.  We now expect a signature from the onion
+     * service encoded in the domain name, and will only give the AltSvc header
+     * to the browser if everything checks out.
+     */
+
+    // For the onion service in this alt-svc header, require that there is an
+    // onion sig header signed by it. There may be more than one onion sig
+    // header, so we have to search for it.
+    let onionSig = null;
+    for (let os of getOnionSigHeaders(headers)) {
+        os = new OnionSig(nacl, onion, os);
+        if (os.validSig && os.readAllBytes) {
+            onionSig = os;
+            break;
+        }
+    }
+    if (!onionSig) {
+        log_debug("Alt-Svc is a self-auth domain or .onion but no onion sig",
+            "header so we don't trust it and won't give it to the user");
+        return false;
+    }
+
+    /*
+     * Temoprary? Maybe? We're doing all this for plain onion service alt-svc
+     * headers as a tacked-on thing right now. The signatures were originally
+     * planned to have [56chars]onion.foo.com which would match the alt-svc
+     * exactly.
+     *
+     * So if we have an alliuminated domain name, it should be in the signature
+     * exactly.
+     *
+     * But if we have an onion domain like [56chars].onion, then we need to
+     * take the friendly domain (foo.com), combine it with the onion in the
+     * alt-svc header, and look for the result ([56chars]onion.foo.com) in the
+     * onion sig header.
+     *
+     * Instead of combining the two, we could rework the server side a little
+     * bit: (1) have Tor generate multiple onion sigs or not include the full
+     * alliuminated name in the signed data. (2) make changes to the nginx
+     * template.
+     *
+     * I think doing that is harder and not not necessarily even better.
+     */
+    // If we have an alliuminated domain, look for it exactly in the onion
+    // sig header.
+    if (is_allium_domain && onionSig.domain != as.domain) {
+        log_debug("The onion sig header is for a different domain",
+            "than the one in the alt-svc header. Not giving",
+            "the alt-svc header to the user. (",
+            onionSig.domain, "vs", as.domain, ")");
+        return false;
+    }
+    // If we have an onion domain, look for it and the origin domain to be
+    // together in the sig header
+    else if (is_onion_domain && onion.str + "onion." + origin != onionSig.domain) {
+        log_debug("The onion sig header contains", onionSig.domain,
+            "but we are looking for", onion.str + "onion." + origin,
+            "so we are not giving it to the user.");
+        return false;
+    }
+
+    /*
+     * Temporary-ish
+     *
+     * Once Tor Browswer supports the securityInfo API, we should pass the
+     * secInfo object into onionSigValidInTime instead of null
+     */
+    // Require the current time to be within the validity window in the onion
+    // sig header
+    if (!onionSigValidInTime(onionSig, null)) {
+        let start = new Date(1000*(onionSig.timeCenter - onionSig.timeWindow/2));
+        let end = new Date(1000*(onionSig.timeCenter + onionSig.timeWindow/2));
+        let now = new Date();
+        log_debug("The onion sig header is not currently valid. It is valid",
+            "from", start, "to", end, "but it is currently", now);
+        return false;
+    }
+
+    /*
+     * DISABLED
+     *
+     * Tor Browser doesn't support the securityInfo API yet.
+     *
+    // Require the base domain in the onion sig to be listed in the TLS
+    // certificate
+    let secInfo = await browser.webRequest.getSecurityInfo(
+        details.requestId, {"certificateChain": true, "rawDER": true});
+    if (secInfo.state != "secure") {
+        log_debug("We don't trust anything about alt-svc headers",
+            "received over insecure connections. Not giving to",
+            "user");
+        return _return_without_altsvc_header(headers);
+    }
+    let certDomains = getSubjectAlts(secInfo);
+    certDomains.push(getSubject(secInfo));
+    let baseDomain = onion_extractBaseDomain(onionSig.domain);
+    if (certDomains.indexOf(baseDomain) < 0) {
+        log_debug(baseDomain, "is not in the TLS cert:", certDomains,
+            "so not giving alt-svc to user");
+        return _return_without_altsvc_header(headers);
+    }
+     */
+
+    return onionSig;
+}
+
+function _storeAltSvcInState(origin, alt, onPreload, validOnionSig) {
+    let sites = ssget("sites") || {};
+    if (!(origin in sites)) {
+        sites[origin] = {
+            'alts': {},
+        };
+    }
+    if (!(alt in sites[origin]['alts'])) {
+        sites[origin]['alts'][alt] = {};
+    }
+    sites[origin]['alts'][alt] = {
+        'onpreload': onPreload,
+        'onionsig': validOnionSig,
+    }
+    ssput("sites", sites);
+    //log_object(sites);
+}
+
+async function onHeadersReceived_filterAltSvc(details) {
+    let headers = details.responseHeaders;
+    let origin = splitURL(details.url).hostname;
+
+    let keptAltSvc = [];
+    for (let as_ of getAltSvcHeaders(headers)) {
+        let as = new AltSvc(as_);
+        // If couldn't parse domain out of header, nothing to do
+        if (!as.domain) {
+            continue;
+        }
+        let shouldKeep = _shouldKeepAltSvcHeader(as, headers, origin);
+        if (!shouldKeep) {
+            log_debug('Not telling client about', as.domain);
+            continue;
+        }
+        log_debug('Keeping alt-svc header for', as.domain);
+        let onPreload = false;
+        let preload = ssget("preload") || {};
+        //log_debug(origin);
+        //log_debug(as.domain);
+        //log_object(preload[origin]['alts']);
+        if (!(origin in preload)) {
+            log_debug("origin not in preload");
+        }
+        else if (preload[origin]['alts'].indexOf(as.domain) < 0) {
+            log_debug("alt not in preload");
+        }
+        else {
+            onPreload = true;
+        }
+        let validOnionSig = false;
+        if (typeof shouldKeep == 'boolean') {
+            // do nothing
+        } else {
+            let onionSig = shouldKeep;
+            validOnionSig = onionSig.validSig && onionSig.readAllBytes;
+        }
+
+        _storeAltSvcInState(origin, as.domain, onPreload, validOnionSig);
+        keptAltSvc.push({'name': 'alt-svc', 'value': as.str});
+    }
+
+    return _returnWithSelectAltSvcHeaders(headers, keptAltSvc);
+}
+
+async function onHeadersReceived_verifySelfAuthConnection(details) {
+    let url = splitURL(details.url);
+    let secInfo = await browser.webRequest.getSecurityInfo(
+        details.requestId, {"certificateChain": true, "rawDER": true});
+
+    if (secInfo.state != "secure") {
+        log_debug("Stopped considering", url.hostname, "becuase not",
+            "a secure connection");
+        return;
+    }
+
+    let onion = onion_v3extractFromPossibleAlliuminatedDomain(url.hostname);
+    if (!onion) {
+        log_debug("Stopped considering", url.hostname, "because not",
+            "a self-authenticating domain name");
+        return;
+    }
+
+    /*
+     * At this point, we are visiting a satis domain name, but we known
+     * nothing else.  We don't know if the proper domains are in the TLS
+     * cert. We don't know if the SATIS HTTP header was provided. We don't
+     * know if the SATIS HTTP header checks out.
+     */
+
+    let subject = getSubject(secInfo);
+    let subjectAlts = getSubjectAlts(secInfo);
+    let fingerprint = getFingerprint(secInfo);
+    let responseHeaders = details.responseHeaders;
+
+    let sigHeader = null;
+    let err = null;
+
+    let rightNames = certContainsProperNames(
+        url.hostname, subject, subjectAlts);
+    if (!rightNames) {
+        err = "The TLS certificate doesn't have the proper " +
+            "domains in the right places";
+        return generateRedirect(sigHeader, url.hostname, fingerprint,
+            err);
+    }
+
+    if (!log_assert(onion)) return;
+    onion = new Onion(onion);
+
+    sigHeader = getOnionSigHeader(responseHeaders);
+    if (!sigHeader) {
+        err = "The webserver didn't provide an onion sig header";
+        return generateRedirect(sigHeader, url.hostname, fingerprint,
+            err);
+    }
+    sigHeader = new OnionSig(nacl, onion, sigHeader);
+
+    if (!sigHeader.validSig) {
+        err  = "The sig in the onion sig header is not valid. " +
+            "Either it is malformed or it was generated with " +
+            "the wrong key.";
+    } else if (!sigHeader.readAllBytes) {
+        err = "The onion sig header had extra data.";
+    } else if (!onionSigValidInTime(sigHeader, secInfo)) {
+        err = "The Alliuminate signature is not considered valid at " +
+            "this time.";
+    } else if (fingerprint != sigHeader.fingerprint) {
+        err = "The fingerprint in the TLS cert doesn't match the " +
+            "one in the Alliuminate HTTP header.";
+    } else if (url.hostname != sigHeader.domain) {
+        err = "The domain in the Alliuminate HTTP header is not the " +
+            "one we are visiting.";
+    } else if (!sigHeader.validSig) {
+        err = "The signature in the Alliuminate HTTP header didn't " +
+            "check out.";
+    }
+
+    if (!!err) {
+        return generateRedirect(sigHeader, url.hostname, fingerprint,
+            err);
+    }
+}
+
+function onMessage_giveSites(origin) {
+    let sites = ssget("sites") || {};
+    if (origin in sites) {
+        return sites[origin]['alts'];
+    }
+    return {};
+}
+
+function onMessage(msg_obj, sender, responseFunc) {
+    let id = msg_obj.id;
+    let msg = msg_obj.msg;
+    if (id == "giveSites") {
+        responseFunc(onMessage_giveSites(msg));
+    } else {
+        log_error("Got message id we don't know how to handle.",
+            "Ignoring ", id);
+    }
+}
+
+function addEventListeners() {
     browser.webRequest.onHeadersReceived.addListener(
-        testListener,
+        onHeadersReceived_filterAltSvc,
         {urls: ["<all_urls>"]},
-        ["blocking", "responseHeaders", "securityInfo"]
+        ["blocking", "responseHeaders"]
+    );
+    browser.webRequest.onHeadersReceived.addListener(
+        onHeadersReceived_verifySelfAuthConnection,
+        {urls: ["<all_urls>"]},
+        ["blocking", "responseHeaders"]
     );
 }
 
-addHTTPSEventListeners();
+ssput("preload", preload);
+addEventListeners();
+browser.runtime.onMessage.addListener(onMessage);
 nacl_factory.instantiate(function (nacl_) {
     nacl = nacl_;
 });

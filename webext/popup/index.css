@@ -1,14 +1,17 @@
-.hidden { display: none; }
-
 body {
-	max-width: 35em;
-	padding-left: 1em;
-	padding-right: 1em;
+	margin-left: 10px;
+	margin-right: 10px;
+	background-color: #ddd;
 }
 
-#error {
-	color: red;
+.bad {
+	background-color: #d00;
 }
-#success {
-	color: green;
+
+.good {
+	background-color: #0d0;
+}
+
+h1 {
+	align: center;
 }

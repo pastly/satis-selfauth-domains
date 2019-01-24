@@ -5,24 +5,13 @@
 <link rel="stylesheet" href="index.css"/>
 </head>
 <body>
-<p>The current page is <span id="current_page">(unknown)</span>.</p>
-<p id="is_onion" class="hidden">This is an onion service.</p>
-<p id="is_satis" class="hidden">This is a SATIS URL.</p>
-<form id="cert_check_form" class="hidden">
-<p>If you would like to check that a SATIS domain's certificate matches the
-public key encoded in the subdomain, paste the certificate's public key into
-the box below.</p>
-<input type="text" id="input_pubkey">
-<input type="hidden" id="url_v3onion" value="">
-<input type="submit" value="Check">
-</form> <!-- cert_check_form -->
-<div id="error" class="hidden"></div>
-<div id="success" class="hidden"></div>
-<script src="lib/sha3.js"></script>
-<script src="lib/base32.js"></script>
-<script src="lib/hex.js"></script>
-<script src="lib/log.js"></script>
-<script src="lib/onion.js"></script>
-<script src="index.js"></script>
+<h1>Alternate Services for <span id=origin></span></h1>
+<table id=altsvc>
+	<tr><th>domain</th><th>on preload</th><th>onion sig</th></tr>
+</table>
+
+<script src=lib/log.js></script>
+<script src=lib/utils.js></script>
+<script src=index.js></script>
 </body>
 </html>
