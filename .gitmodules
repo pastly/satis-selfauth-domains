@@ -1,0 +1,3 @@
+[submodule "webext/lib/asn1js"]
+	path = webext/lib/asn1js
+	url = https://github.com/lapo-luchini/asn1js.git
