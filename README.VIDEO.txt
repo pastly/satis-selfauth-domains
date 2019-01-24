@@ -1,3 +1,6 @@
+Jan 2019 note: This video demonstrates an old version of the extension and
+website. See the main README for more information.
+
                 Alliuminated domain
                 -------------------
 
