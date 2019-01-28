@@ -1,0 +1,2 @@
+asdfonion.example.com	example.com
+ffffonion.example.net	example.net
