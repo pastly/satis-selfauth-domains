@@ -47,7 +47,7 @@ function splitURL(url) {
     return l
 }
 
-function _tosskey(s) {
+function _tokey(s) {
     return "satis-" + s;
 }
 
@@ -61,7 +61,7 @@ function _tosskey(s) {
  * sessionStorage
  */
 function ssput(k, v) {
-    k = _tosskey(k);
+    k = _tokey(k);
     v = JSON.stringify(v);
     sessionStorage.setItem(k, v);
 }
@@ -76,11 +76,56 @@ function ssput(k, v) {
  * it. We will happily return null if nothing is stored under the given key.
  */
 function ssget(k) {
-    k = _tosskey(k);
+    k = _tokey(k);
     let v = JSON.parse(sessionStorage.getItem(k));
+    return v;
+}
+
+/**
+ * As ssput, but in localStorage instead of sessionStorage
+ */
+function lsput(k, v) {
+    k = _tokey(k);
+    v = JSON.stringify(v);
+    localStorage.setItem(k, v);
+}
+
+/**
+ * As lsget, but from localStorage instead of sessionStorage
+ */
+function lsget(k) {
+    k = _tokey(k);
+    let v = JSON.parse(localStorage.getItem(k));
     return v;
 }
 
 function sendMessage(id, msg) {
     return browser.runtime.sendMessage({'id': id, 'msg': msg});
 }
+
+function findSATDomainList(doc) {
+    let list = doc.getElementById("sat_domain_list");
+    if (!list) {
+        log_debug("There is no domain list in this page");
+        return;
+    }
+    let out = new Set();
+    for (let li of list.children) {
+        let from_name = null;
+        let to_name = null;
+        for (ele of li.children) {
+            //log_object(ele.classList);
+            if (ele.classList.contains("sat_domain_from")) {
+                from_name = ele.textContent;
+            } else if (ele.classList.contains("sat_domain_to")) {
+                to_name = ele.textContent;
+            }
+        }
+        if (from_name && to_name) {
+            log_debug("Adding", from_name, "to", to_name);
+            out.add({'from': from_name, 'to': to_name});
+        }
+    }
+    return out;
+}
+

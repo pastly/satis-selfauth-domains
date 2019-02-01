@@ -39,6 +39,16 @@
     },
     "web_accessible_resources": [
         "pages/*.html"
+    ],
+    "content_scripts": [
+        {
+            "matches": ["*://*/*"],
+            "js": [
+                "lib/log.js",
+                "lib/utils.js",
+                "content.js"
+            ]
+        }
     ]
 }
 

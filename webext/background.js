@@ -1,5 +1,7 @@
 var nacl = null;
 
+var SAT_LIST_UPDATE_INTERVAL = 5; // seconds
+
 var preload = {
     'satis.system33.pw': {
         'alts': ['hllvtjcjomneltczwespyle2ihuaq5hypqaavn3is6a7t2dojuaa6rydonion.satis.system33.pw']
@@ -209,7 +211,7 @@ function _shouldKeepAltSvcHeader(as, headers, origin) {
 }
 
 function _storeAltSvcInState(origin, alt, onPreload, validOnionSig) {
-    let sites = ssget("sites") || {};
+    let sites = ssget("altsvcs") || {};
     if (!(origin in sites)) {
         sites[origin] = {
             'alts': {},
@@ -222,7 +224,7 @@ function _storeAltSvcInState(origin, alt, onPreload, validOnionSig) {
         'onpreload': onPreload,
         'onionsig': validOnionSig,
     }
-    ssput("sites", sites);
+    ssput("altsvcs", sites);
     //log_object(sites);
 }
 
@@ -351,22 +353,101 @@ async function onHeadersReceived_verifySelfAuthConnection(details) {
     }
 }
 
-function onMessage_giveSites(origin) {
-    let sites = ssget("sites") || {};
+function onMessage_giveAltSvcs(origin) {
+    let sites = ssget("altsvcs") || {};
     if (origin in sites) {
         return sites[origin]['alts'];
     }
     return {};
 }
 
+function onMessage_satDomainList(obj) {
+    let url = splitURL(obj.url);
+    let list = Array.from(obj.set);
+    log_debug("Found set of SAT domain mappings from", url.hostname);
+    
+    // Make sure we are visiting a SAT domain
+    let onion = onion_v3extractFromPossibleAlliuminatedDomain(url.hostname);
+    if (!onion) {
+        log_debug("We are not currently visiting a SAT domain, so "+
+            "ignoring mappings");
+        return;
+    }
+    let baseDomain = onion_extractBaseDomain(url.hostname);
+    onion = new Onion(onion);
+    if (!onion) {
+        log_debug("The domain looks like a SAT domain, but didn't parse "+
+            "correctly. Ignoring set of mappings.");
+        return;
+    }
+
+    // Only keep SAT domain --> T domain mappings
+    // like [56char]onion.example.com --> example.com
+    let keepList = [];
+    for (mapping of list) {
+        let from_name = mapping.from;
+        let to_name = mapping.to;
+        log_debug("Inspecting mapping from", from_name, "to", to_name);
+        if (!from_name.endsWith(to_name)) {
+            log_debug("Ignoring", from_name, "bc it doesn't end with", to_name);
+            continue;
+        }
+        let o = onion_v3extractFromPossibleAlliuminatedDomain(from_name);
+        if (!o) {
+            log_debug("Ignoring", from_name, "bc it isn't a SAT domain (1)");
+            continue;
+        }
+        o = onion = new Onion(o);
+        if (!o) {
+            log_debug("Ignoring", from_name, "bc it isn't a SAT domain (2)");
+            continue;
+        }
+        log_debug("Keeping", from_name, "to", to_name);
+        keepList.push(mapping);
+    }
+    list = keepList;
+    if (list.length < 1) {
+        log_debug("No valid mappings remain. Nothing to do");
+        return "Thanks (unused 1)";
+    }
+
+    // Add it to the trusted storage if necessary
+    let trustedSATLists = lsget("trustedSATLists") || {};
+    let hash = sha3_256.create().update(new Uint8Array(url)).hex();
+    if (!(hash in trustedSATLists)) {
+        log_debug("Adding", url, "to trusted SAT lists");
+        trustedSATLists[hash] = {
+            "lastUpdate": Math.floor(Date.now() / 1000),
+            "id": hash.slice(0, 8),
+            "updateURL": obj.url,
+            "list": list,
+        };
+        lsput("trustedSATLists", trustedSATLists);
+        setTimeout(updateSATList, SAT_LIST_UPDATE_INTERVAL * 1000, hash);
+        return "Thanks (used)";
+    } else {
+        log_debug("Already have mappings from this domain.");
+        return "Thanks (unused 2)";
+    }
+}
+
+function onMessage_giveTrustedSATLists(msg) {
+    let d = lsget("trustedSATLists") || {};
+    return d;
+}
+
 function onMessage(msg_obj, sender, responseFunc) {
     let id = msg_obj.id;
     let msg = msg_obj.msg;
-    if (id == "giveSites") {
-        responseFunc(onMessage_giveSites(msg));
+    if (id == "giveAltSvcs") {
+        responseFunc(onMessage_giveAltSvcs(msg));
+    } else if (id == "giveTrustedSATLists") {
+        responseFunc(onMessage_giveTrustedSATLists(msg));
+    } else if (id == "satDomainList") {
+        responseFunc(onMessage_satDomainList(msg));
     } else {
         log_error("Got message id we don't know how to handle.",
-            "Ignoring ", id);
+            "Ignoring: ", id);
     }
 }
 
@@ -383,8 +464,53 @@ function addEventListeners() {
     );
 }
 
+function updateSATList(hash) {
+    let d = lsget("trustedSATLists") || {};
+    if (!(hash in d)) {
+        log_debug("List", hash, "not in trusted SAT list storage. "+
+            "Nothing to do");
+        return;
+    }
+    let listObj = d[hash];
+    var xmlHttp = new XMLHttpRequest();
+    xmlHttp.onreadystatechange = function() {
+        if (xmlHttp.readyState == 4 && xmlHttp.status == 200) {
+            let set = findSATDomainList(xmlHttp.responseXML);
+            d = lsget("trustedSATLists") || {};
+            d[hash].lastUpdate = Math.floor(Date.now() / 1000);
+            d[hash].list = Array.from(set);
+            log_debug("Updated list", hash);
+            lsput("trustedSATLists", d);
+        }
+    }
+    log_object(listObj.updateURL);
+    xmlHttp.responseType = 'document';
+    xmlHttp.open("GET", listObj.updateURL, true);
+    xmlHttp.send();
+    setTimeout(updateSATList, SAT_LIST_UPDATE_INTERVAL * 1000, hash);
+}
+
+function scheduleSATUpdates() {
+    let d = lsget("trustedSATLists") || {};
+    for (hash in d) {
+        let listObj = d[hash];
+        let now = new Date()
+        let nextUpdate = new Date(
+            (listObj.lastUpdate + SAT_LIST_UPDATE_INTERVAL) * 1000);
+        let updateIn = nextUpdate - now;
+        if (updateIn < 0) {
+            updateIn = 0;
+        }
+        log_debug("Scheduling update of list", listObj.id, "in", updateIn/1000,
+            "seconds");
+        setTimeout(updateSATList, updateIn, hash);
+    }
+}
+
 ssput("preload", preload);
+lsput("trustedSATLists", {});
 addEventListeners();
+scheduleSATUpdates();
 browser.runtime.onMessage.addListener(onMessage);
 nacl_factory.instantiate(function (nacl_) {
     nacl = nacl_;
