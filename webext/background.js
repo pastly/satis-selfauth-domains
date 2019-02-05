@@ -1,6 +1,6 @@
 var nacl = null;
 
-var SAT_LIST_UPDATE_INTERVAL = 5; // seconds
+var SAT_LIST_UPDATE_INTERVAL = 600; // seconds
 
 var preload = {
     'satis.system33.pw': {
