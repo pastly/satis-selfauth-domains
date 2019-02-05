@@ -1,5 +1,6 @@
 function setOrigin(s) {
-    document.getElementById("origin").innerHTML = s;
+    document.getElementById("origin")
+        .appendChild(document.createTextNode(s));
 }
 
 function addAltSvc(domain, preload, onionsig) {

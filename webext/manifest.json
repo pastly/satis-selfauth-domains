@@ -1,7 +1,7 @@
 {
     "manifest_version": 2,
     "name": "Alliuminate the Web",
-    "version": "0.2.0",
+    "version": "0.2.1",
     "description": "Weaving self-authentication into the web",
     "icons": {
         "48": "icons/onion-48.png"
