@@ -20,8 +20,13 @@ h1 {
     display: none;
 }
 
+#buttons {
+    min-width: 150px;
+    align: center;
+    margin: 20px;
+}
+
 #sat_list_button {
-    max-width:100px;;
     -mox-appearance:button;
     -webkit-appearance:button;
 }

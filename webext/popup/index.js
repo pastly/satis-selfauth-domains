@@ -3,10 +3,10 @@ function addButtonTargets() {
     elm.href = browser.runtime.getURL("pages/satlists.html");
 }
 
-function setOrigin(s) {
-    document.getElementById("origin")
-        .appendChild(document.createTextNode(s));
-}
+//function setOrigin(s) {
+//    document.getElementById("origin")
+//        .appendChild(document.createTextNode(s));
+//}
 
 function addAltSvc(domain, preload, onionsig) {
     document.getElementById("altsvccontainer").classList.remove("hide");
@@ -36,7 +36,7 @@ function addAltSvc(domain, preload, onionsig) {
 
 function populatePopupWindow(tabs) {
     let origin = splitURL(tabs[0].url).hostname;
-    setOrigin(origin);
+    //setOrigin(origin);
     let response = sendMessage("giveAltSvcs", origin);
     response.then(populateAltSvc, log_error);
     addButtonTargets();
