@@ -44,6 +44,18 @@ function addSATList(listObj) {
     form.appendChild(button);
     div_new.appendChild(form);
 
+    form = doc.createElement("form");
+    button = doc.createElement("button");
+    button.appendChild(doc.createTextNode("Delete this list"));
+    button.addEventListener("click", function() {
+        let resp = sendMessage(
+            "deleteSATDomainList",
+            {'hash': listObj.id});
+        resp.then(log_debug, log_debug);
+    });
+    form.appendChild(button);
+    div_new.appendChild(form);
+
     let h3 = doc.createElement("h3");
     h3.appendChild(doc.createTextNode("Contents"));
     div_new.appendChild(h3);

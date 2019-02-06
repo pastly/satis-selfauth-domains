@@ -449,6 +449,18 @@ function onMessage_setSATDomainListName(msg) {
     return true;
 }
 
+function onMessage_deleteSATDomainList(msg) {
+    let d = lsget("trustedSATLists") || {};
+    if (!(msg.hash in d)) {
+        log_error("Asked to delete SAT domain list id", msg.hash,
+            "but we don't know about that list");
+        return false;
+    }
+    delete d[msg.hash];
+    lsput("trustedSATLists", d);
+    return true;
+}
+
 function onMessage(msg_obj, sender, responseFunc) {
     let id = msg_obj.id;
     let msg = msg_obj.msg;
@@ -460,6 +472,8 @@ function onMessage(msg_obj, sender, responseFunc) {
         responseFunc(onMessage_satDomainList(msg));
     } else if (id == "setSATDomainListName") {
         responseFunc(onMessage_setSATDomainListName(msg));
+    } else if (id == "deleteSATDomainList") {
+        responseFunc(onMessage_deleteSATDomainList(msg));
     } else {
         log_error("Got message id we don't know how to handle.",
             "Ignoring: ", id);
