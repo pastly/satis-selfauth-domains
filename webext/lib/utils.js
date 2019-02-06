@@ -113,8 +113,7 @@ function findSATDomainList(doc) {
     for (let li of list.children) {
         let from_name = null;
         let to_name = null;
-        for (ele of li.children) {
-            //log_object(ele.classList);
+        for (ele of li.getElementsByTagName("span")) {
             if (ele.classList.contains("sat_domain_from")) {
                 from_name = ele.textContent;
             } else if (ele.classList.contains("sat_domain_to")) {
