@@ -19,9 +19,3 @@ h1 {
 .hide {
     display: none;
 }
-
-#sat_list_button {
-    max-width:100px;;
-    -mox-appearance:button;
-    -webkit-appearance:button;
-}
