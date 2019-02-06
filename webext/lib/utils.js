@@ -123,6 +123,9 @@ function findSATDomainList(doc) {
         if (from_name && to_name) {
             log_debug("Adding", from_name, "to", to_name);
             out.add({'from': from_name, 'to': to_name});
+        } else {
+            log_debug("Ignoring element:");
+            log_object(ele);
         }
     }
     return out;
