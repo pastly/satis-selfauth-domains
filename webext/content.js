@@ -8,7 +8,7 @@ function log_error_from_bg(resp) {
 
 function main() {
     let set = findSATDomainList(document);
-    if (set.length < 1) {
+    if (!set || set.size < 1) {
         return;
     }
     let response = sendMessage(
