@@ -1,0 +1,18 @@
+body {
+	max-width:800px;
+	font-family:Georgia,"Times New Roman",Times,serif;
+	margin:auto;
+	padding:0;
+	background-color:#F3F3F3;
+}
+#body_contents {
+	padding: 10px;
+	background-color:#CCC;
+}
+a {
+	text-decoration:none;
+	color:#336699;
+}
+a:hover {
+	color:#5588bb
+}

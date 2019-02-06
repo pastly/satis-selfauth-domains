@@ -21,9 +21,9 @@ START_HTML = '''
 
 ITEM_HTML = '''
 <li class='sat_domain_list_item'>
-    <span class="%s">%%s</span>
+    <a href='https://{sat_name}'><span class="%s">{sat_name}</span></a>
     is a valid SAT domain for
-    <span class="%s">%%s</span>
+    <a href='https://{trad_name}'><span class="%s">{trad_name}</span></a>
 </li>
 ''' % (LIST_ITEM_FROM_CLASS, LIST_ITEM_TO_CLASS)
 
@@ -76,7 +76,8 @@ def output_html(fd, pre_text, post_text, mapping):
     fd.write(START_HTML)
     for trad_name in mapping:
         for selfauth_name in mapping[trad_name]:
-            fd.write(ITEM_HTML % (selfauth_name, trad_name))
+            fd.write(
+                ITEM_HTML.format(sat_name=selfauth_name, trad_name=trad_name))
     fd.write(END_HTML)
     fd.write(post_text)
 
