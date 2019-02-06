@@ -1,21 +1,12 @@
 body {
-	margin-left: 10px;
-	margin-right: 10px;
+    max-width:900px;
+    margin:auto;
 	background-color: #ddd;
 }
-
-.bad {
-	background-color: #d00;
+label {
+    padding-right:5px;
 }
-
-.good {
-	background-color: #0d0;
-}
-
-h1 {
-	align: center;
-}
-
-.hide {
-    display: none;
+.satmaplistentry {
+    padding:10px;
+    border:5px solid #666;
 }

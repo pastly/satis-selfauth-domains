@@ -418,9 +418,10 @@ function onMessage_satDomainList(obj) {
         log_debug("Adding", url, "to trusted SAT lists");
         trustedSATLists[hash] = {
             "lastUpdate": Math.floor(Date.now() / 1000),
-            "id": hash.slice(0, 8),
+            "id": hash,
             "updateURL": obj.url,
             "list": list,
+            "name": null,
         };
         lsput("trustedSATLists", trustedSATLists);
         setTimeout(updateSATList, SAT_LIST_UPDATE_INTERVAL * 1000, hash);
@@ -436,6 +437,18 @@ function onMessage_giveTrustedSATLists(msg) {
     return d;
 }
 
+function onMessage_setSATDomainListName(msg) {
+    let d = lsget("trustedSATLists") || {};
+    if (!(msg.hash in d)) {
+        log_error("Asked to set SAT domain list name", msg.name, "for id",
+            msg.hash, "but we don't know about that list");
+        return false;
+    }
+    d[msg.hash].name = msg.name;
+    lsput("trustedSATLists", d);
+    return true;
+}
+
 function onMessage(msg_obj, sender, responseFunc) {
     let id = msg_obj.id;
     let msg = msg_obj.msg;
@@ -445,6 +458,8 @@ function onMessage(msg_obj, sender, responseFunc) {
         responseFunc(onMessage_giveTrustedSATLists(msg));
     } else if (id == "satDomainList") {
         responseFunc(onMessage_satDomainList(msg));
+    } else if (id == "setSATDomainListName") {
+        responseFunc(onMessage_setSATDomainListName(msg));
     } else {
         log_error("Got message id we don't know how to handle.",
             "Ignoring: ", id);
