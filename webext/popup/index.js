@@ -54,12 +54,11 @@ function populateSATLists(origin) {
     return function(d) {
         let div = document.getElementById("existonsatlistcontainer");
         let ul = document.getElementById("existonsatlist");
-        if (onion_v3extractFromPossibleAlliuminatedDomain(origin)) {
-            div.classList.remove("hide");
-        } else {
+        if (!onion_v3extractFromPossibleAlliuminatedDomain(origin)) {
             div.classList.remove("add");
             return;
         }
+        div.classList.remove("hide");
         if (Object.keys(d).length == 0) {
             let p = document.createElement("p");
             p.appendChild(document.createTextNode(
