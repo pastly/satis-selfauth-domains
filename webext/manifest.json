@@ -31,6 +31,7 @@
             "lib/utils.js",
             "lib/base32.js",
             "lib/sha3.js",
+            "lib/satlist.js",
             "lib/asn1js/hex.js",
             "lib/asn1js/base64.js",
             "lib/asn1js/oids.js",

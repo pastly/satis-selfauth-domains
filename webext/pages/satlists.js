@@ -1,11 +1,17 @@
 function addSATList(listObj) {
     let doc = document;
-    let div_top = doc.getElementById("satmaplistcontainer");
+    let div_top = doc.getElementById(
+        (listObj.is_trusted ? "trustedlist" : "untrustedlist"));
     let div_new = doc.createElement("div");
 
     let h2 = doc.createElement("h2");
     h2.appendChild(doc.createTextNode(
-        "List " + (listObj.name ? listObj.name : "(Unamed)")));
+        "List " +
+        (listObj.name ? listObj.name : "(Unamed)") +
+        (!listObj.is_enabled ? " (Disabled)" : "")));
+    if (!listObj.is_enabled) {
+        h2.classList.add("disabled");
+    }
     div_new.appendChild(h2);
 
     let p = doc.createElement("p");
@@ -23,26 +29,66 @@ function addSATList(listObj) {
 
     let form = doc.createElement("form");
     let label = doc.createElement("label");
-    let input = doc.createElement("input");
+    let input_name = doc.createElement("input");
     let button = doc.createElement("button");
     label.for = listObj.id + "-name";
-    input.id =  listObj.id + "-name";
-    input.type = "text";
+    input_name.id =  listObj.id + "-name";
+    input_name.type = "text";
     if (listObj.name) {
-        input.value = listObj.name;
+        input_name.value = listObj.name;
     }
     label.appendChild(doc.createTextNode("List name"));
     button.appendChild(doc.createTextNode("Set"));
     button.addEventListener("click", function() {
         let resp = sendMessage(
             "setSATDomainListName",
-            {'hash': listObj.id, 'name': input.value});
+            {'hash': listObj.id, 'name': input_name.value});
         resp.then(log_debug, log_debug);
     });
     form.appendChild(label);
-    form.appendChild(input);
+    form.appendChild(input_name);
     form.appendChild(button);
     div_new.appendChild(form);
+
+    form = doc.createElement("form");
+    label = doc.createElement("label");
+    let input_trusted = doc.createElement("input");
+    label.for = listObj.id + "-trusted";
+    input_trusted.id = listObj.id + "-trusted";
+    input_trusted.type = "checkbox";
+    input_trusted.checked = listObj.is_trusted;
+    label.appendChild(doc.createTextNode("Is trusted"));
+    input_trusted.addEventListener("change", function() {
+        let resp = sendMessage(
+            "setSATDomainListTrusted",
+            {'hash': listObj.id, 'trusted': input_trusted.checked});
+        resp.then(log_debug, log_debug);
+        window.location.reload(false); // false means don't make a web request
+    });
+    form.appendChild(label);
+    form.appendChild(input_trusted);
+    div_new.appendChild(form);
+
+    if (listObj.is_trusted) {
+        form = doc.createElement("form");
+        label = doc.createElement("label");
+        let input_enabled = doc.createElement("input");
+        label.for = listObj.id + "-enabled";
+        input_enabled.id = listObj.id + "-enabled";
+        input_enabled.type = "checkbox";
+        input_enabled.checked = listObj.is_enabled;
+        label.appendChild(doc.createTextNode("Is enabled"));
+        input_enabled.addEventListener("change", function() {
+            let resp = sendMessage(
+                "setSATDomainListEnabled",
+                {'hash': listObj.id, 'enabled': input_enabled.checked});
+            resp.then(log_debug, log_debug);
+            window.location.reload(false); // false means don't make a web request
+        });
+        form.appendChild(label);
+        form.appendChild(input_enabled);
+        div_new.appendChild(form);
+    }
 
     form = doc.createElement("form");
     button = doc.createElement("button");

@@ -8,5 +8,19 @@ label {
 }
 .satmaplistentry {
     padding:10px;
-    border:5px solid #666;
+    /*border:5px solid #666;*/ /* Set differently on which list it is in */
+}
+
+.disabled {
+    text-decoration:line-through;
+}
+
+#trustedlist .satmaplistentry {
+    background-color:#57fc32;/* greenish */
+    border:5px solid #3be016;/* greenish */
+}
+
+#untrustedlist .satmaplistentry {
+    background-color:#dbf44e;/* yellowish */
+    border:5px solid #c2e016;/* yellowish */
 }

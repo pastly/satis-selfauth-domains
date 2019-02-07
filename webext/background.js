@@ -416,13 +416,8 @@ function onMessage_satDomainList(obj) {
     let hash = sha3_256.create().update(new Uint8Array(url)).hex();
     if (!(hash in trustedSATLists)) {
         log_debug("Adding", url, "to trusted SAT lists");
-        trustedSATLists[hash] = {
-            "lastUpdate": Math.floor(Date.now() / 1000),
-            "id": hash,
-            "updateURL": obj.url,
-            "list": list,
-            "name": null,
-        };
+        trustedSATLists[hash] = new SATList(
+            obj.url, list, false, false, null, null);
         lsput("trustedSATLists", trustedSATLists);
         setTimeout(updateSATList, SAT_LIST_UPDATE_INTERVAL * 1000, hash);
         return "Thanks (used)";
@@ -445,6 +440,34 @@ function onMessage_setSATDomainListName(msg) {
         return false;
     }
     d[msg.hash].name = msg.name;
+    lsput("trustedSATLists", d);
+    return true;
+}
+
+function onMessage_setSATDomainListTrusted(msg) {
+    let d = lsget("trustedSATLists") || {};
+    if (!(msg.hash in d)) {
+        log_error("Asked to set SAT domain list is_trusted", msg.trusted,
+            "for id", msg.hash, "but we don't know about that list");
+        return false;
+    }
+    log_debug("Setting is_trusted to", msg.trusted);
+    log_debug("Setting is_enabled to", msg.trusted);
+    d[msg.hash].is_trusted = msg.trusted;
+    d[msg.hash].is_enabled = msg.trusted;
+    lsput("trustedSATLists", d);
+    return true;
+}
+
+function onMessage_setSATDomainListEnabled(msg) {
+    let d = lsget("trustedSATLists") || {};
+    if (!(msg.hash in d)) {
+        log_error("Asked to set SAT domain list is_enabled", msg.enabled,
+            "for id", msg.hash, "but we don't know about that list");
+        return false;
+    }
+    log_debug("Setting is_enabled to", msg.enabled);
+    d[msg.hash].is_enabled = msg.enabled;
     lsput("trustedSATLists", d);
     return true;
 }
@@ -472,6 +495,10 @@ function onMessage(msg_obj, sender, responseFunc) {
         responseFunc(onMessage_satDomainList(msg));
     } else if (id == "setSATDomainListName") {
         responseFunc(onMessage_setSATDomainListName(msg));
+    } else if (id == "setSATDomainListTrusted") {
+        responseFunc(onMessage_setSATDomainListTrusted(msg));
+    } else if (id == "setSATDomainListEnabled") {
+        responseFunc(onMessage_setSATDomainListEnabled(msg));
     } else if (id == "deleteSATDomainList") {
         responseFunc(onMessage_deleteSATDomainList(msg));
     } else {
