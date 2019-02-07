@@ -417,7 +417,8 @@ function onMessage_satDomainList(obj) {
     if (!(hash in trustedSATLists)) {
         log_debug("Adding", url, "to trusted SAT lists");
         trustedSATLists[hash] = new SATList(
-            obj.url, list, false, false, null, null);
+            obj.url, list, false, false, null,
+            onion_extractBaseDomain(url.hostname));
         lsput("trustedSATLists", trustedSATLists);
         setTimeout(updateSATList, SAT_LIST_UPDATE_INTERVAL * 1000, hash);
         return "Thanks (used)";
