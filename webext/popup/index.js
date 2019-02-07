@@ -37,14 +37,47 @@ function addAltSvc(domain, preload, onionsig) {
 function populatePopupWindow(tabs) {
     let origin = splitURL(tabs[0].url).hostname;
     //setOrigin(origin);
-    let response = sendMessage("giveAltSvcs", origin);
-    response.then(populateAltSvc, log_error);
+    let resp_altsvc = sendMessage("giveAltSvcs", origin);
+    resp_altsvc.then(populateAltSvc, log_error);
+    let resp_satlists = sendMessage("giveTrustedSATListsContaining", origin);
+    resp_satlists.then(populateSATLists(origin), log_error);
     addButtonTargets();
 }
 
 function populateAltSvc(alts) {
     for (alt in alts) {
         addAltSvc(alt, alts[alt]['onpreload'], alts[alt]['onionsig']);
+    }
+}
+
+function populateSATLists(origin) {
+    return function(d) {
+        let div = document.getElementById("existonsatlistcontainer");
+        let ul = document.getElementById("existonsatlist");
+        if (onion_v3extractFromPossibleAlliuminatedDomain(origin)) {
+            div.classList.remove("hide");
+        } else {
+            div.classList.remove("add");
+            return;
+        }
+        if (Object.keys(d).length == 0) {
+            let p = document.createElement("p");
+            p.appendChild(document.createTextNode(
+                "This domain is not on any of your enabled and trusted SAT " +
+                "lists, or you do not have any enabled and trusted SAT lists."));
+            div.appendChild(p);
+            //let li = document.createElement("li");
+            //li.appendChild(document.createTextNode("None"));
+            //li.classList.add("warn");
+            //ul.appendChild(li);
+            return;
+        }
+        for (hash in d) {
+            let listObj = d[hash];
+            let li = document.createElement("li");
+            li.appendChild(document.createTextNode(listObj.name));
+            ul.appendChild(li);
+        }
     }
 }
 

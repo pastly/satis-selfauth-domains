@@ -433,6 +433,24 @@ function onMessage_giveTrustedSATLists(msg) {
     return d;
 }
 
+function onMessage_giveTrustedSATListsContaining(msg) {
+    let d = lsget("trustedSATLists") || {};
+    let out = {};
+    for (hash in d) {
+        let listObj = d[hash];
+        if (!listObj.is_trusted || !listObj.is_enabled) {
+            continue;
+        }
+        for (item of listObj.list) {
+            if (item.from == msg) {
+                out[hash] = listObj;
+                break;
+            }
+        }
+    }
+    return out;
+}
+
 function onMessage_setSATDomainListName(msg) {
     let d = lsget("trustedSATLists") || {};
     if (!(msg.hash in d)) {
@@ -492,6 +510,8 @@ function onMessage(msg_obj, sender, responseFunc) {
         responseFunc(onMessage_giveAltSvcs(msg));
     } else if (id == "giveTrustedSATLists") {
         responseFunc(onMessage_giveTrustedSATLists(msg));
+    } else if (id == "giveTrustedSATListsContaining") {
+        responseFunc(onMessage_giveTrustedSATListsContaining(msg));
     } else if (id == "satDomainList") {
         responseFunc(onMessage_satDomainList(msg));
     } else if (id == "setSATDomainListName") {
