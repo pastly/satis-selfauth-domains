@@ -1,7 +1,7 @@
 {
     "manifest_version": 2,
     "name": "Alliuminate the Web",
-    "version": "0.2.6",
+    "version": "0.2.7",
     "description": "Weaving self-authentication into the web",
     "browser_specific_settings": {
         "gecko": {
