@@ -42,11 +42,24 @@ function certContainsProperNames(urlDomain, subject, subjectAlts) {
             urlBase, "does not match the subject", subject);
         return false;
     }
-    if (!subjectAlts.includes(urlDomain)) {
-        log_debug("Cert does not contain proper names because",
-            urlDomain, "is not in the subjectAlts", subjectAlts);
-        return false;
-    }
+    /*
+     * Roll-out relaxation:
+     * Do not require the SAT domain to be in the certificate.
+     *
+     * If our extension is processing the domain, the TLS certificate must be
+     * valid for the SAT domain (likely do to a wildcard). Firefox wouldn't
+     * have let us get this far if the TLS certificate was untrusted for this
+     * domain.
+     *
+     * Therefore it is "safe" to comment this check out during roll-out
+     * relaxation.
+     */
+    //if (!subjectAlts.includes(urlDomain)) {
+    //    log_debug("Cert does not contain proper names because",
+    //        urlDomain, "is not in the subjectAlts", subjectAlts);
+    //    return false;
+    //}
+
     //log_debug("Yes cert checks out.", urlBase, "is subject and",
     //    urlDomain, "is in subjectAlts");
     return true;
