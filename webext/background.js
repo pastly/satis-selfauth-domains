@@ -8,6 +8,24 @@ var preload = {
     },
 };
 
+function satListsContaining(domain) {
+    let d = lsget("trustedSATLists") || {};
+    let out = {};
+    for (hash in d) {
+        let listObj = d[hash];
+        if (!listObj.is_trusted || !listObj.is_enabled) {
+            continue;
+        }
+        for (item of listObj.list) {
+            if (item.from == domain) {
+                out[hash] = listObj;
+                break;
+            }
+        }
+    }
+    return out;
+}
+
 function certContainsProperNames(urlDomain, subject, subjectAlts) {
     if (!log_assert(onion_v3extractFromPossibleAlliuminatedDomain(urlDomain),
         "Should have already determined that urlDomain isn't ",
@@ -34,8 +52,8 @@ function certContainsProperNames(urlDomain, subject, subjectAlts) {
     return true;
 }
 
-function generateRedirect(satisHeaderValue, urlHostname, tlsFingerprint,
-    errorMessage) {
+function generateRedirect_badSigEtc(
+        satisHeaderValue, urlHostname, tlsFingerprint, errorMessage) {
     let pageURL = browser.extension.getURL("pages/index.html");
     let validSig = satisHeaderValue ? satisHeaderValue.validSig : null;
     let domain = satisHeaderValue ? satisHeaderValue.domain : null;
@@ -50,6 +68,12 @@ function generateRedirect(satisHeaderValue, urlHostname, tlsFingerprint,
     pageURL = addParam(pageURL, "timeCenter", timeCenter);
     pageURL = addParam(pageURL, "timeWindow", timeWindow);
     pageURL = addParam(pageURL, "error", errorMessage);
+    return { "redirectUrl": pageURL };
+}
+
+function generateRedirect_notOnTrustedSATList(urlHostname) {
+    let pageURL = browser.extension.getURL("pages/notOnTrustedSATList.html");
+    pageURL = addParam(pageURL, "domain", urlHostname);
     return { "redirectUrl": pageURL };
 }
 
@@ -312,7 +336,7 @@ async function onHeadersReceived_verifySelfAuthConnection(details) {
     if (!rightNames) {
         err = "The TLS certificate doesn't have the proper " +
             "domains in the right places";
-        return generateRedirect(sigHeader, url.hostname, fingerprint,
+        return generateRedirect_badSigEtc(sigHeader, url.hostname, fingerprint,
             err);
     }
 
@@ -322,7 +346,7 @@ async function onHeadersReceived_verifySelfAuthConnection(details) {
     sigHeader = getOnionSigHeader(responseHeaders);
     if (!sigHeader) {
         err = "The webserver didn't provide an onion sig header";
-        return generateRedirect(sigHeader, url.hostname, fingerprint,
+        return generateRedirect_badSigEtc(sigHeader, url.hostname, fingerprint,
             err);
     }
     sigHeader = new OnionSig(nacl, onion, sigHeader);
@@ -348,9 +372,43 @@ async function onHeadersReceived_verifySelfAuthConnection(details) {
     }
 
     if (!!err) {
-        return generateRedirect(sigHeader, url.hostname, fingerprint,
+        log_error(err);
+        return generateRedirect_badSigEtc(sigHeader, url.hostname, fingerprint,
             err);
     }
+}
+
+function onHeadersReceived_allowAttestedSATDomainsOnly(details) {
+    let d = lsget("settings") || new Settings();
+    if (!d.attestedSATDomainsOnly)
+        return;
+    let url = splitURL(details.url);
+    // When the user visits a non-SAT domain, do nothing special. This only
+    // ever applies to SAT domains.
+    let onion = onion_v3extractFromPossibleAlliuminatedDomain(url.hostname);
+    if (!onion) {
+        log_debug("Stopped considering", url.hostname, "because not",
+            "a self-authenticating domain name");
+        return;
+    }
+    // The option is enabled if we've gotten here, and we are visiting a SAT
+    // domain. The user only wants to visit a SAT domain if it is attested for
+    // on a list of theirs.  All this function needs to do is make sure the
+    // domain is on a trusted SAT list. Another event handler will do the
+    // checks to make sure the onion sig is present and checks out with the TLS
+    // certificate.
+    //
+    // If there's zero list hashes in the returned object, the for loop won't
+    // be called and we will return false
+    let lists = satListsContaining(url.hostname);
+    for (hash in lists) {
+        log_debug("So far we are allowing", url.hostname, "because it",
+            "appears in list", lists[hash].name);
+        return;
+    }
+    log_debug(url.hostname, "is not on any trusted SAT list so disallowing");
+    return generateRedirect_notOnTrustedSATList(url.hostname);
+
 }
 
 function onMessage_giveAltSvcs(origin) {
@@ -434,21 +492,7 @@ function onMessage_giveTrustedSATLists(msg) {
 }
 
 function onMessage_giveTrustedSATListsContaining(msg) {
-    let d = lsget("trustedSATLists") || {};
-    let out = {};
-    for (hash in d) {
-        let listObj = d[hash];
-        if (!listObj.is_trusted || !listObj.is_enabled) {
-            continue;
-        }
-        for (item of listObj.list) {
-            if (item.from == msg) {
-                out[hash] = listObj;
-                break;
-            }
-        }
-    }
-    return out;
+    return satListsContaining(msg);
 }
 
 function onMessage_setSATDomainListName(msg) {
@@ -559,6 +603,11 @@ function addEventListeners() {
     );
     browser.webRequest.onHeadersReceived.addListener(
         onHeadersReceived_verifySelfAuthConnection,
+        {urls: ["<all_urls>"]},
+        ["blocking", "responseHeaders"]
+    );
+    browser.webRequest.onHeadersReceived.addListener(
+        onHeadersReceived_allowAttestedSATDomainsOnly,
         {urls: ["<all_urls>"]},
         ["blocking", "responseHeaders"]
     );

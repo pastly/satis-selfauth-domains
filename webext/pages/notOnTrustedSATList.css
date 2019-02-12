@@ -1,0 +1,15 @@
+#content {
+    max-width: 800px;
+    background-color: #fff;
+    border: 8px solid #ddd;
+    margin: auto;
+    padding: 10px;
+}
+body {
+    background-color: #eee
+}
+
+#satListButton {
+    -mox-appearance:button;
+    -webkit-appearance:button;
+}

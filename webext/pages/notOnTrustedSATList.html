@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<link rel="stylesheet" href="notOnTrustedSATList.css"/>
+</head>
+<body>
+<div id=content>
+<h1 id=title>No trusted SAT List has attested to this domain</h1>
+<p>The SAT domain <span id=domain></span> is unattested.</p>
+<p>
+The option for only allowing SAT domains if some trusted list includes it is
+enabled. Unfortunately this SAT domain is not on any of the lists you trust.
+This could be because this indeed is a malicious domain, but it also could be
+perfectly safe and simply not trusted by any of your lists.
+</p>
+<a target="_blank" id="satListButton">View SAT lists</a>
+</div> <!-- content -->
+<script src="/pages/lib/log.js"></script>
+<script src="/pages/notOnTrustedSATList.js"></script>
+</body>
+</html>
