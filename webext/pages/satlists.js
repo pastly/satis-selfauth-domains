@@ -43,7 +43,7 @@ function addSATList(listObj) {
         let resp = sendMessage(
             "setSATDomainListName",
             {'hash': listObj.id, 'name': input_name.value});
-        resp.then(log_debug, log_debug);
+        resp.then(function() {}, log_debug);
     });
     form.appendChild(label);
     form.appendChild(input_name);
@@ -62,7 +62,7 @@ function addSATList(listObj) {
         let resp = sendMessage(
             "setSATDomainListTrusted",
             {'hash': listObj.id, 'trusted': input_trusted.checked});
-        resp.then(log_debug, log_debug);
+        resp.then(function() {}, log_debug);
         window.location.reload(false); // false means don't make a web request
     });
     form.appendChild(label);
@@ -82,7 +82,7 @@ function addSATList(listObj) {
             let resp = sendMessage(
                 "setSATDomainListEnabled",
                 {'hash': listObj.id, 'enabled': input_enabled.checked});
-            resp.then(log_debug, log_debug);
+            resp.then(function() {}, log_debug);
             window.location.reload(false); // false means don't make a web request
         });
         form.appendChild(label);
@@ -97,7 +97,7 @@ function addSATList(listObj) {
         let resp = sendMessage(
             "deleteSATDomainList",
             {'hash': listObj.id});
-        resp.then(log_debug, log_debug);
+        resp.then(function() {}, log_debug);
     });
     form.appendChild(button);
     div_new.appendChild(form);
