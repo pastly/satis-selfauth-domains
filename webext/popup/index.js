@@ -3,6 +3,24 @@ function addButtonTargets() {
     elm.href = browser.runtime.getURL("pages/satlists.html");
 }
 
+function populateSettings(s) {
+    let d = document;
+    var e = d.getElementById("settingAttestedSATDomainsOnly");
+    e.checked = s.attestedSATDomainsOnly;
+}
+
+function addSettingsEvents() {
+    let elm = document.getElementById("settingAttestedSATDomainsOnly");
+    elm.addEventListener("change", function() {
+        let resp = sendMessage(
+            "setSetting",
+            {'key': 'attestedonly', 'value': elm.checked});
+        resp.then(function (it_worked) {
+            if (!it_worked) elm.checked = !elm.checked;
+        }, log_error);
+    });
+}
+
 //function setOrigin(s) {
 //    document.getElementById("origin")
 //        .appendChild(document.createTextNode(s));
@@ -42,6 +60,9 @@ function populatePopupWindow(tabs) {
     let resp_satlists = sendMessage("giveTrustedSATListsContaining", origin);
     resp_satlists.then(populateSATLists(origin), log_error);
     addButtonTargets();
+    let resp_settings = sendMessage("giveCurrentSettings", {});
+    resp_settings.then(populateSettings, log_error);
+    addSettingsEvents();
 }
 
 function populateAltSvc(alts) {

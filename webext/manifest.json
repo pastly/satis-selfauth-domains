@@ -26,6 +26,7 @@
     },
     "background": {
         "scripts": [
+            "lib/settings.js",
             "lib/header.js",
             "lib/log.js",
             "lib/utils.js",

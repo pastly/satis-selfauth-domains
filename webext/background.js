@@ -503,6 +503,25 @@ function onMessage_deleteSATDomainList(msg) {
     return true;
 }
 
+function onMessage_giveCurrentSettings(msg) {
+    let d = lsget("settings") || new Settings();
+    return d;
+}
+
+function onMessage_setSetting(msg) {
+    let d = lsget("settings") || new Settings();
+    let v = msg['value'];
+    switch (msg.key) {
+        case "attestedonly":
+            d.attestedSATDomainsOnly = v;
+            break;
+        default:
+            return false;
+    }
+    lsput("settings", d);
+    return true;
+}
+
 function onMessage(msg_obj, sender, responseFunc) {
     let id = msg_obj.id;
     let msg = msg_obj.msg;
@@ -512,6 +531,10 @@ function onMessage(msg_obj, sender, responseFunc) {
         responseFunc(onMessage_giveTrustedSATLists(msg));
     } else if (id == "giveTrustedSATListsContaining") {
         responseFunc(onMessage_giveTrustedSATListsContaining(msg));
+    } else if (id == "giveCurrentSettings") {
+        responseFunc(onMessage_giveCurrentSettings(msg));
+    } else if (id == "setSetting") {
+        responseFunc(onMessage_setSetting(msg));
     } else if (id == "satDomainList") {
         responseFunc(onMessage_satDomainList(msg));
     } else if (id == "setSATDomainListName") {
