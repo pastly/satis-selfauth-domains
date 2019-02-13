@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+Nothing.
+
+## v1.0.1 - 2019-02-13
+
 ### Fixed
 
 - pages/index.html was moved to pages/badSigEtc.html, but when updating the
