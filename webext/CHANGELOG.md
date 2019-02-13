@@ -6,7 +6,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
-Nothing.
+### Fixed
+
+- pages/index.html was moved to pages/badSigEtc.html, but when updating the
+  code I missed a spot. Redirects to this error page when -- for example -- the
+onion sig header is bad, we not working. Installing the extension from its
+archive would result in no warnings. Temporarily installing it locally would
+produce a weird error page from Firefox.
 
 ## v1.0.0 - 2019-02-12
 

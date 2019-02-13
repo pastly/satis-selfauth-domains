@@ -67,7 +67,7 @@ function certContainsProperNames(urlDomain, subject, subjectAlts) {
 
 function generateRedirect_badSigEtc(
         satisHeaderValue, urlHostname, tlsFingerprint, errorMessage) {
-    let pageURL = browser.extension.getURL("pages/index.html");
+    let pageURL = browser.extension.getURL("pages/badSigEtc.html");
     let validSig = satisHeaderValue ? satisHeaderValue.validSig : null;
     let domain = satisHeaderValue ? satisHeaderValue.domain : null;
     let fpInSig = satisHeaderValue ? satisHeaderValue.fingerprint : null;
