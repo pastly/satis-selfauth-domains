@@ -14,6 +14,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 better be, the browser should have halted this connection long before if it
 isn't!).
 
+
+### Changed
+
+- Catch exception when trying to get securityInfo and the API doesn't exist.
+
 ## v1.0.2 - 2019-02-19
 
 ### Changed
