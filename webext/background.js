@@ -42,26 +42,29 @@ function certContainsProperNames(urlDomain, subject, subjectAlts) {
             urlBase, "does not match the subject", subject);
         return false;
     }
-    /*
-     * Roll-out relaxation:
-     * Do not require the SAT domain to be in the certificate.
-     *
-     * If our extension is processing the domain, the TLS certificate must be
-     * valid for the SAT domain (likely do to a wildcard). Firefox wouldn't
-     * have let us get this far if the TLS certificate was untrusted for this
-     * domain.
-     *
-     * Therefore it is "safe" to comment this check out during roll-out
-     * relaxation.
-     */
-    //if (!subjectAlts.includes(urlDomain)) {
-    //    log_debug("Cert does not contain proper names because",
-    //        urlDomain, "is not in the subjectAlts", subjectAlts);
-    //    return false;
-    //}
 
-    //log_debug("Yes cert checks out.", urlBase, "is subject and",
-    //    urlDomain, "is in subjectAlts");
+    let settings = lsget("settings") || new Settings();
+    if (settings.wildcardSATDomainsAllowed &&
+            !subjectAlts.includes(urlDomain)) {
+        /* Rollout relaxation and setting: allow SAT domain to be covered by a
+         * wildcard, if the user chooses.
+         */
+        let wildcard = "*" + urlDomain.substr(urlDomain.indexOf("."));
+        log_debug("Checking if", wildcard,
+            "is in certificate (covers the SAT doamin)");
+        if (!subjectAlts.includes(wildcard)) {
+            log_error(
+                "Cert does not contain the SAT domain nor a wildcard covering",
+                "it. This should be impossible.");
+            return false;
+        } else {
+            // Yes the user wants to allow a wildcard to cover a SAT domain,
+            // and such wildcard exists in the certificate
+        }
+    } else {
+        // Yes the certificate contains the SAT domain exactly
+    }
+
     return true;
 }
 
@@ -572,9 +575,14 @@ function onMessage_setSetting(msg) {
         case "attestedSATDomainsOnly":
             d.attestedSATDomainsOnly = v;
             break;
+        case "wildcardSATDomainsAllowed":
+            d.wildcardSATDomainsAllowed = v;
+            break;
         default:
+            log_debug("Unknown setting key:", msg.key);
             return false;
     }
+    log_debug("Set", msg.key, "to", v);
     lsput("settings", d);
     return true;
 }

@@ -6,7 +6,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
-Nothing.
+### Added
+
+- Optionally do not require the SAT domain that we're visiting to exist in the
+  TLS certificate, instead being covered by a wildcard. When enabled,
+`[56char]onion.foo.com` is allowed if `*.foo.com` is in the certificate (and it
+better be, the browser should have halted this connection long before if it
+isn't!).
 
 ## v1.0.2 - 2019-02-19
 

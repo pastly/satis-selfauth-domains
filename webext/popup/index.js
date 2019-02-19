@@ -7,16 +7,27 @@ function populateSettings(s) {
     let d = document;
     var e = d.getElementById("settingAttestedSATDomainsOnly");
     e.checked = s.attestedSATDomainsOnly;
+    e = d.getElementById("settingWildcardSATDomainsAllowed");
+    e.checked = s.wildcardSATDomainsAllowed;
 }
 
 function addSettingsEvents() {
-    let elm = document.getElementById("settingAttestedSATDomainsOnly");
-    elm.addEventListener("change", function() {
+    let e1 = document.getElementById("settingAttestedSATDomainsOnly");
+    e1.addEventListener("change", function() {
         let resp = sendMessage(
             "setSetting",
             {'key': 'attestedSATDomainsOnly', 'value': e1.checked});
         resp.then(function (it_worked) {
-            if (!it_worked) elm.checked = !elm.checked;
+            if (!it_worked) e1.checked = !e1.checked;
+        }, log_error);
+    });
+    let e2 = document.getElementById("settingWildcardSATDomainsAllowed");
+    e2.addEventListener("change", function() {
+        let resp = sendMessage(
+            "setSetting",
+            {'key': 'wildcardSATDomainsAllowed', 'value': e2.checked});
+        resp.then(function (it_worked) {
+            if (!it_worked) e2.checked = !e2.checked;
         }, log_error);
     });
 }
