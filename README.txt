@@ -17,12 +17,13 @@ satis.system33.pw/
 
 webext/
 
-  A Firefox web extension for checking alliuminated domain names.
+  A Firefox web extension for checking SAT domain names.
 
 Alliuminated domain.webm
 
   A video demonstrating the product of (an older version of) these files. See
-  its README for more information.
+  its README for more information. SAT domains used to be called "Alliuminated"
+  domains.
 
 nginx.conf.tmpl
 
@@ -165,9 +166,9 @@ work.
 
     4. decide what text m4 will be looking for. For example M4_SATIS_SIG ...
 
-    5. tell nginx to add an X-Alliuminate header to all queries:
+    5. tell nginx to add an X-SAT-Sig header to all queries:
 
-           add_header X-Alliuminate M4_SATIS_SIG;
+           add_header X-SAT-Sig M4_SATIS_SIG;
 
     6. run m4 with the nginx config template and outputting the result to the
        real nginx config file.
@@ -181,7 +182,7 @@ work.
   A similar process should be possible with Apache.
 
   Now when people visit example.com, their browser should be getting an
-  X-Alliuminate header. Our extension will be expecting it if they visit
+  X-SAT-Sig header. Our extension will be expecting it if they visit
   hllvtjcjomneltczwespyle2ihuaq5hypqaavn3is6a7t2dojuaa6rydonion.example.com
 
 --- Wrap this process up in a script and run it periodically

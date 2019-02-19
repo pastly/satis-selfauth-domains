@@ -64,7 +64,7 @@ function onion_v3valid(onionstr) {
  * Returns [56chars] from domains like [56chars]onion.foo.com, otherwise
  * returns null.
  */
-function onion_v3extractFromPossibleAlliuminatedDomain(domain) {
+function onion_v3extractFromPossibleSATDomain(domain) {
     let rightNumPeriods = (domain.match(/\./g) || []).length >= 2;
     if (!rightNumPeriods)
         return null;
@@ -110,7 +110,7 @@ function onion_v3extractFromPossibleOnionDomain(domain) {
  * satis domain, return null.
  */
 function onion_extractBaseDomain(domain) {
-    if (!onion_v3extractFromPossibleAlliuminatedDomain(domain)) {
+    if (!onion_v3extractFromPossibleSATDomain(domain)) {
         log_debug("Can't extract a base domain from a non-satis domain.");
         return null;
     }

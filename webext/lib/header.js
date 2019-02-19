@@ -18,11 +18,11 @@ function _getHeaders(headers, name) {
 }
 
 function getOnionSigHeader(headers) {
-    return _getHeader(headers, "X-Alliuminate");
+    return _getHeader(headers, "X-SAT-Sig");
 }
 
 function getOnionSigHeaders(headers) {
-    return _getHeaders(headers, "X-Alliuminate");
+    return _getHeaders(headers, "X-SAT-Sig");
 }
 
 function getAltSvcHeaders(headers) {

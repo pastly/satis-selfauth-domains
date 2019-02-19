@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 Nothing.
 
+## v1.0.2 - 2019-02-19
+
+### Changed
+
+- Most usages of "Alliuminated" are now "SAT" instead. This mean the name of
+  the extension has changed too.
+
 ## v1.0.1 - 2019-02-13
 
 ### Fixed

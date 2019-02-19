@@ -1,12 +1,12 @@
 {
     "manifest_version": 2,
-    "name": "Alliuminate the Web",
-    "version": "1.0.1",
-    "description": "Weaving self-authentication into the web",
+    "name": "SAT Domain Tools",
+    "version": "1.0.2",
+    "description": "Self-authenticating Traditional domains weave self-authentication into the web",
     "browser_specific_settings": {
         "gecko": {
             "strict_min_version": "65.0",
-            "update_url": "https://demos.traudt.xyz/extensions/firefox/alliuminate_the_web/updates.json"
+            "update_url": "https://demos.traudt.xyz/extensions/firefox/sat_domain_tools/updates.json"
         }
     },
     "icons": {
@@ -21,7 +21,7 @@
     "browser_action": {
         "browser_style": true,
         "default_icon": "icons/onion-48.png",
-        "default_title": "Alliuminate the Web",
+        "default_title": "SAT Domain Tools",
         "default_popup": "popup/index.html"
     },
     "background": {

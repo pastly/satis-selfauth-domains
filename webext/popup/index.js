@@ -75,7 +75,7 @@ function populateSATLists(origin) {
     return function(d) {
         let div = document.getElementById("existonsatlistcontainer");
         let ul = document.getElementById("existonsatlist");
-        if (!onion_v3extractFromPossibleAlliuminatedDomain(origin)) {
+        if (!onion_v3extractFromPossibleSATDomain(origin)) {
             div.classList.remove("add");
             return;
         }

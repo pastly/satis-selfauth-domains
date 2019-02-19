@@ -5,26 +5,26 @@ server {
     location / {
         try_files $uri $uri/ =404;
     }
-    add_header X-Alliuminate M4_SATIS_SIG;
+    add_header X-SAT-Sig M4_SATIS_SIG;
     add_header Alt-Svc 'h2="hllvtjcjomneltczwespyle2ihuaq5hypqaavn3is6a7t2dojuaa6rydonion.satis.system33.pw:443"; ma=600;';
     add_header Alt-Svc 'h2="hllvtjcjomneltczwespyle2ihuaq5hypqaavn3is6a7t2dojuaa6ryd.onion:443"; ma=600;';
     location /index.html {
-        #add_header X-Alliuminate M4_SATIS_SIG;
+        #add_header X-SAT-Sig M4_SATIS_SIG;
     }
     location /good.html {
-        #add_header X-Alliuminate M4_SATIS_SIG;
+        #add_header X-SAT-Sig M4_SATIS_SIG;
     }
     location /badtime.html {
-        add_header X-Alliuminate M4_SATIS_SIG_BAD_TIME;
+        add_header X-SAT-Sig M4_SATIS_SIG_BAD_TIME;
     }
     location /badfp.html {
-        add_header X-Alliuminate M4_SATIS_SIG_BAD_FP;
+        add_header X-SAT-Sig M4_SATIS_SIG_BAD_FP;
     }
     location /baddomain.html {
-        add_header X-Alliuminate M4_SATIS_SIG_BAD_DOMAIN;
+        add_header X-SAT-Sig M4_SATIS_SIG_BAD_DOMAIN;
     }
     location /badsignature.html {
-        add_header X-Alliuminate M4_SATIS_SIG_BAD_SIG;
+        add_header X-SAT-Sig M4_SATIS_SIG_BAD_SIG;
     }
     listen [::]:443 ssl; # managed by Certbot
     listen 443 ssl; # managed by Certbot

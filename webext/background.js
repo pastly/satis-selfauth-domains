@@ -27,14 +27,14 @@ function satListsContaining(domain) {
 }
 
 function certContainsProperNames(urlDomain, subject, subjectAlts) {
-    if (!log_assert(onion_v3extractFromPossibleAlliuminatedDomain(urlDomain),
+    if (!log_assert(onion_v3extractFromPossibleSATDomain(urlDomain),
         "Should have already determined that urlDomain isn't ",
-        "a Alliuminated domain.")) {
+        "a SAT domain.")) {
         return false;
     }
     let urlBase = onion_extractBaseDomain(urlDomain);
     if (!log_assert(urlBase, "Should have been able to get the base ",
-        "domain from Alliuminate domain", urlDomain)) {
+        "domain from SAT domain", urlDomain)) {
         return false;
     }
     if (urlBase != subject) {
@@ -112,17 +112,17 @@ function _returnWithSelectAltSvcHeaders(headers, altsvcHeaders) {
  * If it's not a special one that we care about having extra restrictions,
  * return true.
  *
- * If it's a special one -- an onion address or an alliuminated domain -- then
+ * If it's a special one -- an onion address or an SAT domain -- then
  * return false if it doesn't pass the extra restirctions. If it does pass,
  * return the OnionSig object.
  */
 function _shouldKeepAltSvcHeader(as, headers, origin) {
 
     let onion = null;
-    let is_allium_domain = false;
+    let is_sat_domain = false;
     let is_onion_domain = false;
-    // Is it a alliuminated name?
-    onion = onion_v3extractFromPossibleAlliuminatedDomain(as.domain);
+    // Is it a sat domain name?
+    onion = onion_v3extractFromPossibleSATDomain(as.domain);
     if (!onion) {
         // Is it a v3 onion?
         onion = onion_v3extractFromPossibleOnionDomain(as.domain);
@@ -130,7 +130,7 @@ function _shouldKeepAltSvcHeader(as, headers, origin) {
             is_onion_domain = true;
         }
     } else {
-        is_allium_domain = true;
+        is_sat_domain = true;
     }
 
     // Not either, so just give it to the user
@@ -141,7 +141,7 @@ function _shouldKeepAltSvcHeader(as, headers, origin) {
 
     /*
      * There's an AltSvc header and it is either for a .onion or an
-     * alliuminated domain name.  We now expect a signature from the onion
+     * SAT domain name.  We now expect a signature from the onion
      * service encoded in the domain name, and will only give the AltSvc header
      * to the browser if everything checks out.
      */
@@ -169,7 +169,7 @@ function _shouldKeepAltSvcHeader(as, headers, origin) {
      * planned to have [56chars]onion.foo.com which would match the alt-svc
      * exactly.
      *
-     * So if we have an alliuminated domain name, it should be in the signature
+     * So if we have an SAT domain name, it should be in the signature
      * exactly.
      *
      * But if we have an onion domain like [56chars].onion, then we need to
@@ -179,14 +179,14 @@ function _shouldKeepAltSvcHeader(as, headers, origin) {
      *
      * Instead of combining the two, we could rework the server side a little
      * bit: (1) have Tor generate multiple onion sigs or not include the full
-     * alliuminated name in the signed data. (2) make changes to the nginx
+     * SAT name in the signed data. (2) make changes to the nginx
      * template.
      *
      * I think doing that is harder and not not necessarily even better.
      */
-    // If we have an alliuminated domain, look for it exactly in the onion
+    // If we have an SAT domain, look for it exactly in the onion
     // sig header.
-    if (is_allium_domain && onionSig.domain != as.domain) {
+    if (is_sat_domain && onionSig.domain != as.domain) {
         log_debug("The onion sig header is for a different domain",
             "than the one in the alt-svc header. Not giving",
             "the alt-svc header to the user. (",
@@ -322,7 +322,7 @@ async function onHeadersReceived_verifySelfAuthConnection(details) {
         return;
     }
 
-    let onion = onion_v3extractFromPossibleAlliuminatedDomain(url.hostname);
+    let onion = onion_v3extractFromPossibleSATDomain(url.hostname);
     if (!onion) {
         log_debug("Stopped considering", url.hostname, "because not",
             "a self-authenticating domain name");
@@ -371,16 +371,16 @@ async function onHeadersReceived_verifySelfAuthConnection(details) {
     } else if (!sigHeader.readAllBytes) {
         err = "The onion sig header had extra data.";
     } else if (!onionSigValidInTime(sigHeader, secInfo)) {
-        err = "The Alliuminate signature is not considered valid at " +
+        err = "The SAT domain signature is not considered valid at " +
             "this time.";
     } else if (fingerprint != sigHeader.fingerprint) {
         err = "The fingerprint in the TLS cert doesn't match the " +
-            "one in the Alliuminate HTTP header.";
+            "one in the SAT HTTP header.";
     } else if (url.hostname != sigHeader.domain) {
-        err = "The domain in the Alliuminate HTTP header is not the " +
+        err = "The domain in the SAT HTTP header is not the " +
             "one we are visiting.";
     } else if (!sigHeader.validSig) {
-        err = "The signature in the Alliuminate HTTP header didn't " +
+        err = "The signature in the SAT HTTP header didn't " +
             "check out.";
     }
 
@@ -398,7 +398,7 @@ function onHeadersReceived_allowAttestedSATDomainsOnly(details) {
     let url = splitURL(details.url);
     // When the user visits a non-SAT domain, do nothing special. This only
     // ever applies to SAT domains.
-    let onion = onion_v3extractFromPossibleAlliuminatedDomain(url.hostname);
+    let onion = onion_v3extractFromPossibleSATDomain(url.hostname);
     if (!onion) {
         log_debug("Stopped considering", url.hostname, "because not",
             "a self-authenticating domain name");
@@ -438,7 +438,7 @@ function onMessage_satDomainList(obj) {
     log_debug("Found set of SAT domain mappings from", url.hostname);
     
     // Make sure we are visiting a SAT domain
-    let onion = onion_v3extractFromPossibleAlliuminatedDomain(url.hostname);
+    let onion = onion_v3extractFromPossibleSATDomain(url.hostname);
     if (!onion) {
         log_debug("We are not currently visiting a SAT domain, so "+
             "ignoring mappings");
@@ -463,7 +463,7 @@ function onMessage_satDomainList(obj) {
             log_debug("Ignoring", from_name, "bc it doesn't end with", to_name);
             continue;
         }
-        let o = onion_v3extractFromPossibleAlliuminatedDomain(from_name);
+        let o = onion_v3extractFromPossibleSATDomain(from_name);
         if (!o) {
             log_debug("Ignoring", from_name, "bc it isn't a SAT domain (1)");
             continue;
