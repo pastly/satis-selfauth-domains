@@ -569,7 +569,7 @@ function onMessage_setSetting(msg) {
     let d = lsget("settings") || new Settings();
     let v = msg['value'];
     switch (msg.key) {
-        case "attestedonly":
+        case "attestedSATDomainsOnly":
             d.attestedSATDomainsOnly = v;
             break;
         default:

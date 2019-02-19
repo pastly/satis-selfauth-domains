@@ -14,7 +14,7 @@ function addSettingsEvents() {
     elm.addEventListener("change", function() {
         let resp = sendMessage(
             "setSetting",
-            {'key': 'attestedonly', 'value': elm.checked});
+            {'key': 'attestedSATDomainsOnly', 'value': e1.checked});
         resp.then(function (it_worked) {
             if (!it_worked) elm.checked = !elm.checked;
         }, log_error);
