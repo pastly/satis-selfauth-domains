@@ -37,10 +37,10 @@ As of 5 Feb 2019, the extension is signed by Mozilla and able to be installed
 from a signed archive file. You do not have to download this repository to
 install the extension.
 
-Simply click
-https://demos.traudt.xyz/extensions/firefox/alliuminate_the_web/latest.xpi in
-Firefox (and probably Tor Browser, see "Hard mode" section below) and allow the
-extension to be installed.
+Simply visit
+https://demos.traudt.xyz/extensions/firefox/sat_domain_tools/ in
+Firefox (and probably Tor Browser, see "Hard mode" section below), select the
+highest-version \*.xpi file, and allow the extension to be installed.
 
 It is configured to auto update.
 
