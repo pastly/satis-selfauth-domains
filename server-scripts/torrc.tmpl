@@ -1,0 +1,17 @@
+# This is a torrc fragment that can be %include-d in a fuller torrc.
+# For example:
+#     SocksPort 0
+#     DataDirectory data
+#     Log notice file data/notice.log
+#     PidFile data/tor.pid
+#     # ... more torrc options you may have ...
+#     %include foo.com.torrc
+#     %include bar.com.torrc
+#     # ... more torrc options you may have ...
+HiddenServiceDir data/hs
+HiddenServicePort 443
+HiddenServiceVersion 3
+HiddenServiceSatisSig 1
+HiddenServiceSatisDomain M4_TRAD_DOMAIN
+HiddenServiceSatisFingerprint M4_TLS_FP
+HiddenServiceSatisSigInterval 86400
