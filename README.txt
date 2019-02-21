@@ -1,13 +1,3 @@
-Jan 2019 note: The extension saw a massive overhaul that is now getting commit
-to this repository:
- - Self-auth names now look like [56char]onion.foo.com as opposed to
-   [56char].onion.foo.com
- - Support for verifying self-auth names in alt-svc's
- - Support for verifying onion address in alt-svc's
- - No longer require a Firefox patch
- - Relax some verification requirements to make adoption more likely to happen
-   (for example, requiring the self-auth name to be in the TLS certificate)
-
                 Contents
                 --------
 
@@ -107,47 +97,127 @@ work.
   check that there's a "Trusted SAT mappings lists" section with one list in it
   with 2 domain mappings.
 
-                Setting Up Server Side (Non-Alt-Svc Version)
-                --------------------------------------------
+                Setting Up Server Side
+                ----------------------
 
---- Add your eventual self-auth domain to a TLS cert
-
-  Jump ahead far enough to have compiled Tor. Comment out the
-  HiddenSerivceSatisSig torrc options since you won't know all of them yet. Run
-  Tor so that you have a v3 onion service.
-
-  If your domain is example.com and if data/hs/hostname contains
-  zfob4nth675763zthpij33iq4pz5q4qthr3gydih4qbdiwtypr2e3bqd.onion, then you will
-  want the following domains in your TLS cert.
-
-   - example.com
-   - hllvtjcjomneltczwespyle2ihuaq5hypqaavn3is6a7t2dojuaa6rydonion.example.com
-
-  Note the lack of a '.' before the word onion.
+  Assumptions:
+  - Your tor souce code directory is /home/satis/src/tor.
+  - Your traditional domain is example.com.
+  - Tor will generate the onion address
+    rbxel6kjp4o7hz6fmy7af4nv5vyg37fnwddfxnzxqzss2h7lrkzs4rid.onion for you
+  - Your TLS certificate chain will be located at
+    /etc/letsencrypt/live/example.com/fullchain.pem
+  - Your TLS fingerprint will be
+    1F897271B61AFF9F581CEFE869E191C1C549C2F552757F96A75215187FA2767B
 
 --- Get and build my branch of Tor
 
-  See tor/ or tor.*.tar.xz for the code. I include an example torrc.
+  See tor/ or tor.*.tar.xz for the code. I include a build.sh script.
 
-  You will need to edit the torrc to have your domain and your TLS fingerprint.
-  While there's more intelligent ways to figure out your TLS fingerprint,
-  you can do it with Firefox: https://i.imgur.com/QiPwYqF.png
-  $ echo "77:C7:6C:11:70:33:25:EE:F0:6C:3B:E3:0F:15:C2:CB:2A:73:7A:56:F3:40:FD:76:29:1E:06:CB:0D:45:48:2C" | tr -d ':'
+  Don't run Tor yet.
 
-  Tor outputs your v3 onion address to data/hs/hostname for convenience. It
-  also writes data/hs/satis_sig*, which you will need later.
+--- Configure Tor (first time)
+
+  Put the following in your torrc, located at /home/satis/src/tor/torrc
+
+      SocksPort 0
+      DataDirectory data
+      Log notice file data/notice.log
+      Log notice stdout
+      PidFile data/tor.pid
+      HiddenServiceDir data/hs-example.com
+      HiddenServicePort 443
+      HiddenServiceVersion 3
+
+  Run Tor briefly:
+
+      ./src/app/tor -f torrc
+
+  It should run in the foreground without errors, and ctrl-c will kill it.
+  Don't ctrl-c until Tor has logged '[notice] Bootstrapped 100%: Done'
+
+  There will now be a hostname file at data/hs-example.com/hostname. This is
+  the onion address Tor generated. Take note of it.
+
+--- Generate a TLS certificate with your SAT domain in it
+
+  With the assumptions given at the beginning of this section, your traditional
+  domain is example.com and your SAT domain is
+  rbxel6kjp4o7hz6fmy7af4nv5vyg37fnwddfxnzxqzss2h7lrkzs4ridonion.example.com.
+  (Note the lack of a dot before "onion")
+
+  Do whatever is necessary to obtain a TLS certificate with both of these names
+  in it. This may mean adding the SAT domain to your example.com nginx config
+  file, updating your DNS records, and using Let's Encrypt.
+
+  Note the location of your shiny new TLS certificate's fullchain.pem
+
+--- Configure Tor (second/final time)
+
+  We now have everything necessary to reconfigure Tor and run it for real.
+
+  Replace your torrc (at /home/satis/src/tor/torrc) with the following.
+
+      SocksPort 0
+      DataDirectory data
+      Log notice file data/notice.log
+      PidFile data/tor.pid
+      %include example.com.torrc
+
+  (We removed logging to stdout and will now pull HiddenService* config options
+  from the file example.com.torrc)
+
+  Find torrc.tmpl and update-torrc.sh in this repo (in the server-scripts
+  directory). The former is the template for example.com.torrc, and the latter
+  fills in the template to generate the actual example.com.torrc
+
+  Edit the variables at the top of update-torrc.sh to point to your actual
+  certificate, domain, torrc template, etc.
+
+  Run the script. It should complain about not being able to reload Tor
+  (because you haven't started Tor yet, right?). The error should be:
+  'cat: ...: No such file or directory' followed by usage info for the 'kill'
+  command. Anything else and there's probably something wrong.
+
+  Once the script has been run once with only the allowed error, you should
+  find example.com.torrc now exists at /home/satis/src/tor/example.com.torrc.
+  Verify it exists, it has your traditional domain (example.com), and it has
+  your TLS fingerprint. For example, it should look like this
+  (without comments)
+
+      HiddenServiceDir data/hs-example.com
+      HiddenServicePort 443
+      HiddenServiceVersion 3
+      HiddenServiceSatisSig 1
+      HiddenServiceSatisDomain example.com
+      HiddenServiceSatisFingerprint 1F897271B61AFF9F581CEFE869E191C1C549C2F552757F96A75215187FA2767B
+      HiddenServiceSatisSigInterval 86400
+
+  You should now run Tor continuously in the background. Ideally you wrap it up
+  in a script that is run on boot with a cronjob. To just run it in the
+  background now:
+
+      ./src/app/tor -f torrc --quiet &
+
+  After a few seconds, data/notice.log should state
+  '[notice] Bootstrapped 100%: Done' followed by log lines stating it has wrote
+  some satis sig files.
 
 --- Tell your webserver aobut the signed data
 
   Tor has generated its signature over the appropriate data in
-  data/hs/satis_sig.
+  data/hs-example.com/satis_sig. This file is just raw bytes, and we need to
+  turn that into base64-encoded bytes in an HTTP header that our webserver
+  sends to clients.
 
   I use nginx and (at the time of writing) the included
-  server-scripts/nginx.conf.tmpl and
-  server-scripts/update-satis-sig-nginx-conf.sh to get this data into my nginx
-  config. These are a little more complex than would be necessary for other
-  people, especially if you don't want to use the purposefully bad signatures
-  too.
+  nginx.conf.tmpl and update-satis-sig-nginx-conf.sh (both in server-scripts/)
+  to get this data into my nginx config. These are a little more complex than
+  would be necessary for other people, especially if you don't want to use the
+  purposefully bad signatures too.
+
+  I will now explain the script by walking you through how I would reimplement
+  it to be simpler.
 
   To encoded the file in base 64, do something like this:
 
@@ -160,7 +230,7 @@ work.
     2. add the self-auth domain to the server_name line(s) so nginx will
        correctly respond to traffic on that name too.
 
-    3. plan on using the macor processor m4 to find and replace text in the
+    3. plan on using the macro processor m4 to find and replace text in the
        template file ...
 
     4. decide what text m4 will be looking for. For example M4_SATIS_SIG ...
@@ -182,40 +252,20 @@ work.
 
   Now when people visit example.com, their browser should be getting an
   X-SAT-Sig header. Our extension will be expecting it if they visit
-  hllvtjcjomneltczwespyle2ihuaq5hypqaavn3is6a7t2dojuaa6rydonion.example.com
+  rbxel6kjp4o7hz6fmy7af4nv5vyg37fnwddfxnzxqzss2h7lrkzs4ridonion.example.com.
 
---- Wrap this process up in a script and run it periodically
+--- Wrap these processes up in scripts and run them periodically
 
-  Daily is recommended.
+  If your TLS certificate is going to change regularly (for example, Let's
+  Encrypt certificates expire every 90 days), you should automatically run the
+  update-torrc.sh script every time you change your TLS certificate. I have
+  mine run right after 'certbot renew' as a cronjob.
 
-  If you have Tor run constantly in the background, then you just need to
-  periodically run your script against the new data/hs/satis_sig file.
-
-  I recommend a daily cronjob.
-
-                Setting Up Server Side (Alt-Svc Version)
-                ----------------------------------------
-
-I will outline this process as modifications to the previous process.
-
---- (SKIP) Add your eventual self-auth domain to a TLS cert
-
-You don't need to do this. The extension supports Alt-Svc's as a way to ease
-adoption. In the name of easing adoption further, the extension doesn't require
-Alt-Svc domains to exist in the TLS certificate.
-
---- Get and build my branch of Tor
-
-Unchanged from above process.
-
---- Tell your webserver aobut the signed data
-
-Unchanged from above process, though you'll of course want Alt-Svc headers in
-your nginx config.
-
-    add_header Alt-Svc 'h2="hllvtjcjomneltczwespyle2ihuaq5hypqaavn3is6a7t2dojuaa6rydonion.example.com:443"; ma=600;';
-
-
---- Wrap this process up in a script and run it periodically
-
-Unchanged from above process.
+  The signatures Tor creates expire every few days. If Tor is running
+  constantly in the background, it will be updating its signature files every
+  day by default. Thus you just need to run update-satis-sig-nginx-conf.sh (or
+  your simplier script) daily to pick up the changes and put them in your nginx
+  config. As long as your Tor is configured to generate these files much more
+  often than they expire, it's not terribly important that the get updated in
+  your nginx config immediately. Just make sure it gets done each day as a 
+  cronjob, for example.

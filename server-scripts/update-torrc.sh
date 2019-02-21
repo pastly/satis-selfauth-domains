@@ -3,10 +3,10 @@ set -e
 
 # Variables
 ####################################
-cert_fname="/etc/letsencrypt/live/satis.system33.pw/fullchain.pem"
-traditional_domain_name="satis.system33.pw"
+cert_fname="/etc/letsencrypt/live/example.com/fullchain.pem"
+traditional_domain_name="example.com"
 torrc_tmpl_fname="torrc.tmpl"
-torrc_out_fname="/home/satis/src/tor/satis.system33.pw.torrc"
+torrc_out_fname="/home/satis/src/tor/example.com.torrc"
 reload_tor_command="cat /home/satis/src/tor/data/tor.pid | xargs kill -HUP"
 
 # Useful functions
