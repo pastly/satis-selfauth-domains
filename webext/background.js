@@ -257,15 +257,15 @@ function _storeAltSvcInState(origin, alt, onPreload, validOnionSig) {
             'alts': {},
         };
     }
-    if (!(alt in sites[origin]['alts'])) {
-        sites[origin]['alts'][alt] = {};
+    if (!(alt.str in sites[origin]['alts'])) {
+        sites[origin]['alts'][alt.str] = {};
     }
-    sites[origin]['alts'][alt] = {
+    sites[origin]['alts'][alt.str] = {
+        'alt': alt,
         'onpreload': onPreload,
         'onionsig': validOnionSig,
     }
     ssput("altsvcs", sites);
-    //log_object(sites);
 }
 
 async function onHeadersReceived_filterAltSvc(details) {
@@ -277,6 +277,8 @@ async function onHeadersReceived_filterAltSvc(details) {
         let as = new AltSvc(as_);
         // If couldn't parse domain out of header, nothing to do
         if (!as.domain) {
+            _storeAltSvcInState(origin, as, false, false);
+            keptAltSvc.push({'name': 'alt-svc', 'value': as.str});
             continue;
         }
         let shouldKeep = _shouldKeepAltSvcHeader(as, headers, origin);
@@ -307,7 +309,7 @@ async function onHeadersReceived_filterAltSvc(details) {
             validOnionSig = onionSig.validSig && onionSig.readAllBytes;
         }
 
-        _storeAltSvcInState(origin, as.domain, onPreload, validOnionSig);
+        _storeAltSvcInState(origin, as, onPreload, validOnionSig);
         keptAltSvc.push({'name': 'alt-svc', 'value': as.str});
     }
 

@@ -37,12 +37,9 @@ function addSettingsEvents() {
 //        .appendChild(document.createTextNode(s));
 //}
 
-function addAltSvc(domain, preload, onionsig) {
+function addAltSvc(as, preload, onionsig) {
     document.getElementById("altsvccontainer").classList.remove("hide");
-    //let ul = document.getElementById("altsvc");
-    //let li = document.createElement("li");
-    //li.appendChild(document.createTextNode(s));
-    //ul.appendChild(li);
+    let domain = !!as.domain ? as.domain : as.str;
     let table = document.getElementById("altsvc");
     let tr = document.createElement("tr");
 
@@ -77,8 +74,8 @@ function populatePopupWindow(tabs) {
 }
 
 function populateAltSvc(alts) {
-    for (alt in alts) {
-        addAltSvc(alt, alts[alt]['onpreload'], alts[alt]['onionsig']);
+    for (altstr in alts) {
+        addAltSvc(alts[altstr]['alt'], alts[altstr]['onpreload'], alts[altstr]['onionsig']);
     }
 }
 
