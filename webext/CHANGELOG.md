@@ -19,6 +19,7 @@ isn't!).
 
 - Catch exception when trying to get securityInfo and the API doesn't exist.
 - Store and display all AltSvc headers we get, not just the SAT and onion ones
+- Min version of FF only needs to be 63, not 65
 
 ## v1.0.2 - 2019-02-19
 
