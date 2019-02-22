@@ -25,9 +25,22 @@ function __dateStr() {
     return h + ":" + m + ":" + s + "." + ms;
 }
 
+function __funcStr() {
+    let trace = new Error();
+    let stack = new Error().stack;
+    let stackLine = stack.split("\n")[3]; // 0 is __funcStr, 1 is __log, 2 is log_debug (or similar)
+    let func = stackLine.substr(0, stackLine.indexOf("@"));
+    let fileInfo = stackLine.substr(stackLine.lastIndexOf("/")+1);
+    return func + "@" + fileInfo;
+}
+
 function __log(level) {
+
     return console.log(
-        "[SAT]", "[" + level + "]", "[" + __dateStr() + "]",
+        //"[SAT]",
+        "[" + level + "]",
+        "[" + __dateStr() + "]",
+        "[" + __funcStr() + "]",
         [].slice.apply(arguments).slice(1).join(" "));
 }
 
@@ -38,13 +51,13 @@ function log_object(o) {
 
 function log_debug() {
     if (LOG_DEBUG)
-        return __log("DEBUG", [].slice.apply(arguments).join(" "));
+        return __log("D", [].slice.apply(arguments).join(" "));
 }
 
 function log_warn() {
-    return __log("WARN", [].slice.apply(arguments).join(" "));
+    return __log("W", [].slice.apply(arguments).join(" "));
 }
 
 function log_error() {
-    return __log("ERROR", [].slice.apply(arguments).join(" "));
+    return __log("E", [].slice.apply(arguments).join(" "));
 }

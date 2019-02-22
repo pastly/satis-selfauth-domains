@@ -21,13 +21,13 @@ domain) to be in the TLS certificate too is *more* strict.
 - Require traditional part of SAT domain Alt-Svc headers to be in TLS
   certificate.
 
-
 ### Changed
 
 - Catch exception when trying to get securityInfo and the API doesn't exist.
 - Store and display all AltSvc headers we get, not just the SAT and onion ones
 - Min version of FF only needs to be 63, not 65
 - Improve log strings with the time
+- Improve log strings with func, file, and line info
 
 ## v1.0.2 - 2019-02-19
 
