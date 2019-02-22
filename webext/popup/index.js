@@ -9,6 +9,8 @@ function populateSettings(s) {
     e.checked = s.attestedSATDomainsOnly;
     e = d.getElementById("settingWildcardSATDomainsAllowed");
     e.checked = s.wildcardSATDomainsAllowed;
+    e = d.getElementById("settingSATAltSvcNotInTLSCertAllowed");
+    e.checked = s.satAltSvcNotInTLSCertAllowed;
 }
 
 function addSettingsEvents() {
@@ -28,6 +30,15 @@ function addSettingsEvents() {
             {'key': 'wildcardSATDomainsAllowed', 'value': e2.checked});
         resp.then(function (it_worked) {
             if (!it_worked) e2.checked = !e2.checked;
+        }, log_error);
+    });
+    let e3 = document.getElementById("settingSATAltSvcNotInTLSCertAllowed");
+    e3.addEventListener("change", function() {
+        let resp = sendMessage(
+            "setSetting",
+            {'key': 'satAltSvcNotInTLSCertAllowed', 'value': e3.checked});
+        resp.then(function (it_worked) {
+            if (!it_worked) e3.checked = !e3.checked;
         }, log_error);
     });
 }

@@ -13,6 +13,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 `[56char]onion.foo.com` is allowed if `*.foo.com` is in the certificate (and it
 better be, the browser should have halted this connection long before if it
 isn't!).
+- Optionally do not require SAT domain Alt-Svc headers to exist in the TLS
+  certificate. This doesn't change any of the regular Alt-Svc requirements in
+browsers, like requiring it to be able to use the TLS certificate that the
+origin domain is using. Requiring the Alt-Svc domain (in this case a SAT
+domain) to be in the TLS certificate too is *more* strict.
 
 
 ### Changed

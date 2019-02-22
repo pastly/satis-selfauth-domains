@@ -120,7 +120,7 @@ function _returnWithSelectAltSvcHeaders(headers, altsvcHeaders) {
  * return the OnionSig object.
  */
 function _shouldKeepAltSvcHeader(as, headers, origin, secInfo) {
-
+    let settings = lsget("settings") || new Settings();
     let onion = null;
     let is_sat_domain = false;
     let is_onion_domain = false;
@@ -206,6 +206,22 @@ function _shouldKeepAltSvcHeader(as, headers, origin, secInfo) {
         return false;
     }
 
+    /* If the AltSvc is a SAT domain and the user has this option enabled,
+     * check that it is in the TLS certificate */
+    if (is_sat_domain && !settings.satAltSvcNotInTLSCertAllowed) {
+        log_debug("SAT domain Alt-Svc must be in TLS cert. Checking ...")
+        if (!log_assert(secInfo, "We must have securityInfo API")) {
+            return false;
+        }
+        let certDomains = getSubjectAlts(secInfo);
+        certDomains.push(getSubject(secInfo));
+        if (certDomains.indexOf(as.domain) < 0) {
+            log_debug("SAT domain Alt-Svc not in TLS cert. Not using it");
+            return false;
+        } else {
+            log_debug("SAT domain Alt-Svc is in TLS cert.");
+        }
+    }
     /*
      * DISABLED
      *
@@ -582,6 +598,7 @@ function onMessage_setSetting(msg) {
     switch (msg.key) {
         case "attestedSATDomainsOnly":
         case "wildcardSATDomainsAllowed":
+        case "satAltSvcNotInTLSCertAllowed":
             log_debug("Set", msg.key, "to", v);
             d[msg.key] = v;
             break;
