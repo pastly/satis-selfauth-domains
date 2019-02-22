@@ -6,15 +6,9 @@ server {
     location / {
         try_files $uri $uri/ =404;
     }
-    listen [::]:443 ssl; # managed by Certbot
-    listen 443 ssl; # managed by Certbot
-    ssl_certificate /etc/letsencrypt/live/satis.system33.pw/fullchain.pem; # managed by Certbot
-    ssl_certificate_key /etc/letsencrypt/live/satis.system33.pw/privkey.pem; # managed by Certbot
-    include /etc/letsencrypt/options-ssl-nginx.conf; # managed by Certbot
-    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem; # managed by Certbot
-
     add_header X-SAT-Sig M4_SATIS_SIG;
     add_header Alt-Svc 'h2="hllvtjcjomneltczwespyle2ihuaq5hypqaavn3is6a7t2dojuaa6rydonion.satis.system33.pw:443"; ma=600;';
+    #add_header Alt-Svc 'h2="hllvtjcjomneltczwespyle2ihuaq5hypqaavn3is6a7t2dojuaa6ryd.onion:443"; ma=600;';
     location /badtime.html {
         add_header X-SAT-Sig M4_SATIS_SIG_BAD_TIME;
     }
@@ -27,8 +21,13 @@ server {
     location /badsignature.html {
         add_header X-SAT-Sig M4_SATIS_SIG_BAD_SIG;
     }
+    listen [::]:443 ssl; # managed by Certbot
+    listen 443 ssl; # managed by Certbot
+    ssl_certificate /etc/letsencrypt/live/satis.system33.pw/fullchain.pem; # managed by Certbot
+    ssl_certificate_key /etc/letsencrypt/live/satis.system33.pw/privkey.pem; # managed by Certbot
+    include /etc/letsencrypt/options-ssl-nginx.conf; # managed by Certbot
+    ssl_dhparam /etc/letsencrypt/ssl-dhparams.pem; # managed by Certbot
 }
-
 server {
     if ($host = hllvtjcjomneltczwespyle2ihuaq5hypqaavn3is6a7t2dojuaa6rydonion.satis.system33.pw) {
         return 301 https://$host$request_uri;
