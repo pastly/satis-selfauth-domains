@@ -597,16 +597,14 @@ function onMessage_setSetting(msg) {
     let v = msg['value'];
     switch (msg.key) {
         case "attestedSATDomainsOnly":
-            d.attestedSATDomainsOnly = v;
-            break;
         case "wildcardSATDomainsAllowed":
-            d.wildcardSATDomainsAllowed = v;
+            log_debug("Set", msg.key, "to", v);
+            d[msg.key] = v;
             break;
         default:
             log_debug("Unknown setting key:", msg.key);
             return false;
     }
-    log_debug("Set", msg.key, "to", v);
     lsput("settings", d);
     return true;
 }
