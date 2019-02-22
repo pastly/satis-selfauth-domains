@@ -93,13 +93,6 @@ function generateRedirect_notOnTrustedSATList(urlHostname) {
     return { "redirectUrl": pageURL };
 }
 
-function _return_without_altsvc_header(headers) {
-    headers = headers.filter(h => h.name != 'alt-svc')
-    //headers.push({'name': 'removed-alt-svc', 'value': 'yes'});
-    //log_object(headers);
-    return {'responseHeaders': headers};
-}
-
 function _returnWithSelectAltSvcHeaders(headers, altsvcHeaders) {
     // Return with alt-svc headers filtered out of *headers* and the contents
     // of *altsvc_headers* put into it instead
@@ -239,32 +232,6 @@ function _shouldKeepAltSvcHeader(as, headers, origin, secInfo) {
             log_debug("Trad. domain part is in TLS cert.");
         }
     }
-
-
-    /*
-     * DISABLED
-     *
-     * Tor Browser doesn't support the securityInfo API yet.
-     *
-    // Require the base domain in the onion sig to be listed in the TLS
-    // certificate
-    let secInfo = await browser.webRequest.getSecurityInfo(
-        details.requestId, {"certificateChain": true, "rawDER": true});
-    if (secInfo.state != "secure") {
-        log_debug("We don't trust anything about alt-svc headers",
-            "received over insecure connections. Not giving to",
-            "user");
-        return _return_without_altsvc_header(headers);
-    }
-    let certDomains = getSubjectAlts(secInfo);
-    certDomains.push(getSubject(secInfo));
-    let baseDomain = onion_extractBaseDomain(onionSig.domain);
-    if (certDomains.indexOf(baseDomain) < 0) {
-        log_debug(baseDomain, "is not in the TLS cert:", certDomains,
-            "so not giving alt-svc to user");
-        return _return_without_altsvc_header(headers);
-    }
-     */
 
     return onionSig;
 }
