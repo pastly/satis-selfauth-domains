@@ -119,7 +119,7 @@ function _returnWithSelectAltSvcHeaders(headers, altsvcHeaders) {
  * return false if it doesn't pass the extra restirctions. If it does pass,
  * return the OnionSig object.
  */
-function _shouldKeepAltSvcHeader(as, headers, origin) {
+function _shouldKeepAltSvcHeader(as, headers, origin, secInfo) {
 
     let onion = null;
     let is_sat_domain = false;
@@ -167,13 +167,7 @@ function _shouldKeepAltSvcHeader(as, headers, origin) {
     }
 
     /*
-     * Temoprary? Maybe? We're doing all this for plain onion service alt-svc
-     * headers as a tacked-on thing right now. The signatures were originally
-     * planned to have [56chars]onion.foo.com which would match the alt-svc
-     * exactly.
-     *
-     * So if we have an SAT domain name, it should be in the signature
-     * exactly.
+     * If we have an SAT domain name, it should be in the signature exactly.
      *
      * But if we have an onion domain like [56chars].onion, then we need to
      * take the friendly domain (foo.com), combine it with the onion in the
@@ -187,18 +181,13 @@ function _shouldKeepAltSvcHeader(as, headers, origin) {
      *
      * I think doing that is harder and not not necessarily even better.
      */
-    // If we have an SAT domain, look for it exactly in the onion
-    // sig header.
     if (is_sat_domain && onionSig.domain != as.domain) {
         log_debug("The onion sig header is for a different domain",
             "than the one in the alt-svc header. Not giving",
             "the alt-svc header to the user. (",
             onionSig.domain, "vs", as.domain, ")");
         return false;
-    }
-    // If we have an onion domain, look for it and the origin domain to be
-    // together in the sig header
-    else if (is_onion_domain && onion.str + "onion." + origin != onionSig.domain) {
+    } else if (is_onion_domain && onion.str + "onion." + origin != onionSig.domain) {
         log_debug("The onion sig header contains", onionSig.domain,
             "but we are looking for", onion.str + "onion." + origin,
             "so we are not giving it to the user.");
@@ -206,14 +195,9 @@ function _shouldKeepAltSvcHeader(as, headers, origin) {
     }
 
     /*
-     * Temporary-ish
-     *
-     * Once Tor Browswer supports the securityInfo API, we should pass the
-     * secInfo object into onionSigValidInTime instead of null
+     * Require the current time to be within the validity window in the onion
      */
-    // Require the current time to be within the validity window in the onion
-    // sig header
-    if (!onionSigValidInTime(onionSig, null)) {
+    if (!onionSigValidInTime(onionSig, secInfo)) {
         let start = new Date(1000*(onionSig.timeCenter - onionSig.timeWindow/2));
         let end = new Date(1000*(onionSig.timeCenter + onionSig.timeWindow/2));
         let now = new Date();
@@ -289,6 +273,7 @@ function _storeAltSvcInState(origin, alt, onPreload, validOnionSig) {
 async function onHeadersReceived_filterAltSvc(details) {
     let headers = details.responseHeaders;
     let origin = splitURL(details.url).hostname;
+    let secInfo = await tryGetSecurityInfo(details.requestId);
 
     let keptAltSvc = [];
     for (let as_ of getAltSvcHeaders(headers)) {
@@ -299,7 +284,7 @@ async function onHeadersReceived_filterAltSvc(details) {
             keptAltSvc.push({'name': 'alt-svc', 'value': as.str});
             continue;
         }
-        let shouldKeep = _shouldKeepAltSvcHeader(as, headers, origin);
+        let shouldKeep = _shouldKeepAltSvcHeader(as, headers, origin, secInfo);
         if (!shouldKeep) {
             log_debug('Not telling client about', as.domain);
             continue;
