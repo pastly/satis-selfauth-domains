@@ -18,6 +18,8 @@ isn't!).
 browsers, like requiring it to be able to use the TLS certificate that the
 origin domain is using. Requiring the Alt-Svc domain (in this case a SAT
 domain) to be in the TLS certificate too is *more* strict.
+- Require traditional part of SAT domain Alt-Svc headers to be in TLS
+  certificate.
 
 
 ### Changed

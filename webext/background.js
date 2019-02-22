@@ -222,6 +222,25 @@ function _shouldKeepAltSvcHeader(as, headers, origin, secInfo) {
             log_debug("SAT domain Alt-Svc is in TLS cert.");
         }
     }
+
+    /* If the AltSvc is a SAT domain, check that the trad. domain part is in
+     * the TLS certificate */
+    if (is_sat_domain) {
+        let baseDomain = onion_extractBaseDomain(as.domain);
+        log_debug(
+            "SAT domain Alt-Svc must have trad. domain part (", baseDomain,
+            ") in TLS cert. Checking ...");
+        let certDomains = getSubjectAlts(secInfo);
+        certDomains.push(getSubject(secInfo));
+        if (certDomains.indexOf(baseDomain) < 0) {
+            log_debug("Trad. domain part is not in TLS cert. Not using it");
+            return false;
+        } else {
+            log_debug("Trad. domain part is in TLS cert.");
+        }
+    }
+
+
     /*
      * DISABLED
      *
