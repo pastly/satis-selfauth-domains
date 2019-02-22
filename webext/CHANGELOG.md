@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+Noting.
+
+## v1.1.0 - 2019-02-22
+
 ### Added
 
 - Optionally do not require the SAT domain that we're visiting to exist in the
