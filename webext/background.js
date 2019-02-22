@@ -250,6 +250,24 @@ function _shouldKeepAltSvcHeader(as, headers, origin) {
     return onionSig;
 }
 
+async function tryGetSecurityInfo(reqId) {
+    let secInfo = null;
+    try {
+        secInfo = await browser.webRequest.getSecurityInfo(
+            reqId, {"certificateChain": true, "rawDER": true});
+    } catch (e) {
+        if (e instanceof TypeError) {
+            log_debug(
+                "Caught exception trying to get securityInfo, assuming we",
+                "don't have that API in the browser:", e);
+            return null;
+        } else {
+            throw e;
+        }
+    }
+    return secInfo;
+}
+
 function _storeAltSvcInState(origin, alt, onPreload, validOnionSig) {
     let sites = ssget("altsvcs") || {};
     if (!(origin in sites)) {
@@ -318,24 +336,10 @@ async function onHeadersReceived_filterAltSvc(details) {
 
 async function onHeadersReceived_verifySelfAuthConnection(details) {
     let url = splitURL(details.url);
-    let secInfo = null;
-    try {
-      secInfo = await browser.webRequest.getSecurityInfo(
-          details.requestId, {"certificateChain": true, "rawDER": true});
-    } catch (e) {
-        if (e instanceof TypeError) {
-            log_debug(
-                "Caught exception trying to get securityInfo, assuming we",
-                "don't have that API in the browser:", e);
-            return;
-        } else {
-            throw e;
-        }
-    }
+    let secInfo = await tryGetSecurityInfo(details.requestId);
 
     if (!secInfo) {
-        log_error("Failed to get securityInfo. No API support? Should have",
-            "caught this sooner.");
+        log_error("Failed to get securityInfo. No API support?");
         return;
     }
 
