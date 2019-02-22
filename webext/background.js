@@ -338,8 +338,7 @@ async function onHeadersReceived_verifySelfAuthConnection(details) {
     let url = splitURL(details.url);
     let secInfo = await tryGetSecurityInfo(details.requestId);
 
-    if (!secInfo) {
-        log_error("Failed to get securityInfo. No API support?");
+    if (!log_assert(secInfo, "We must have securityInfo API")) {
         return;
     }
 
