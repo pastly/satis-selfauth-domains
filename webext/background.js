@@ -2,12 +2,6 @@ var nacl = null;
 
 var SAT_LIST_UPDATE_INTERVAL = 600; // seconds
 
-var preload = {
-    'satis.system33.pw': {
-        'alts': ['hllvtjcjomneltczwespyle2ihuaq5hypqaavn3is6a7t2dojuaa6rydonion.satis.system33.pw']
-    },
-};
-
 function satListsContaining(domain) {
     let d = lsget("trustedSATLists") || {};
     let out = {};
@@ -254,7 +248,7 @@ async function tryGetSecurityInfo(reqId) {
     return secInfo;
 }
 
-function _storeAltSvcInState(origin, alt, onPreload, validOnionSig) {
+function _storeAltSvcInState(origin, alt, validOnionSig) {
     let sites = ssget("altsvcs") || {};
     if (!(origin in sites)) {
         sites[origin] = {
@@ -266,7 +260,6 @@ function _storeAltSvcInState(origin, alt, onPreload, validOnionSig) {
     }
     sites[origin]['alts'][alt.str] = {
         'alt': alt,
-        'onpreload': onPreload,
         'onionsig': validOnionSig,
     }
     ssput("altsvcs", sites);
@@ -292,20 +285,8 @@ async function onHeadersReceived_filterAltSvc(details) {
             continue;
         }
         log_debug('Keeping alt-svc header for', as.domain);
-        let onPreload = false;
-        let preload = ssget("preload") || {};
         //log_debug(origin);
         //log_debug(as.domain);
-        //log_object(preload[origin]['alts']);
-        if (!(origin in preload)) {
-            log_debug("origin not in preload");
-        }
-        else if (preload[origin]['alts'].indexOf(as.domain) < 0) {
-            log_debug("alt not in preload");
-        }
-        else {
-            onPreload = true;
-        }
         let validOnionSig = false;
         if (typeof shouldKeep == 'boolean') {
             // do nothing
@@ -314,7 +295,7 @@ async function onHeadersReceived_filterAltSvc(details) {
             validOnionSig = onionSig.validSig && onionSig.readAllBytes;
         }
 
-        _storeAltSvcInState(origin, as, onPreload, validOnionSig);
+        _storeAltSvcInState(origin, as, validOnionSig);
         keptAltSvc.push({'name': 'alt-svc', 'value': as.str});
     }
 
@@ -686,7 +667,6 @@ function scheduleSATUpdates() {
     }
 }
 
-ssput("preload", preload);
 lsput("trustedSATLists", {});
 addEventListeners();
 scheduleSATUpdates();

@@ -6,7 +6,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
-Noting.
+### Removed
+
+- The hardcoded "preload" list of aternate services known to exist.
 
 ## v1.1.0 - 2019-02-22
 
