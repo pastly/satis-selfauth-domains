@@ -205,7 +205,7 @@ function _shouldKeepAltSvcHeader(as, headers, origin, secInfo) {
         }
         let certDomains = getSubjectAlts(secInfo);
         certDomains.push(getSubject(secInfo));
-        if (certDomains.indexOf(as.domain) < 0) {
+        if (!certDomains.includes(as.domain)) {
             log_debug("SAT domain Alt-Svc not in TLS cert. Not using it");
             return false;
         } else {
@@ -222,7 +222,7 @@ function _shouldKeepAltSvcHeader(as, headers, origin, secInfo) {
             ") in TLS cert. Checking ...");
         let certDomains = getSubjectAlts(secInfo);
         certDomains.push(getSubject(secInfo));
-        if (certDomains.indexOf(baseDomain) < 0) {
+        if (!certDomains.includes(baseDomain)) {
             log_debug("Trad. domain part is not in TLS cert. Not using it");
             return false;
         } else {
