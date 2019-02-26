@@ -21,6 +21,8 @@ function satListsContaining(domain) {
 }
 
 function certContainsProperNames(urlDomain, subject, subjectAlts) {
+    let certDomains = subjectAlts;
+    certDomains.push(subject);
     if (!log_assert(onion_v3extractFromPossibleSATDomain(urlDomain),
         "Should have already determined that urlDomain isn't ",
         "a SAT domain.")) {
@@ -31,7 +33,7 @@ function certContainsProperNames(urlDomain, subject, subjectAlts) {
         "domain from SAT domain", urlDomain)) {
         return false;
     }
-    if (urlBase != subject) {
+    if (!certDomains.includes(urlBase)) {
         log_debug("Cert does not contain proper names because urlBase",
             urlBase, "does not match the subject", subject);
         return false;
@@ -39,14 +41,14 @@ function certContainsProperNames(urlDomain, subject, subjectAlts) {
 
     let settings = lsget("settings") || new Settings();
     if (settings.wildcardSATDomainsAllowed &&
-            !subjectAlts.includes(urlDomain)) {
+            !certDomains.includes(urlDomain)) {
         /* Rollout relaxation and setting: allow SAT domain to be covered by a
          * wildcard, if the user chooses.
          */
         let wildcard = "*" + urlDomain.substr(urlDomain.indexOf("."));
         log_debug("Checking if", wildcard,
             "is in certificate (covers the SAT doamin)");
-        if (!subjectAlts.includes(wildcard)) {
+        if (!certDomains.includes(wildcard)) {
             log_error(
                 "Cert does not contain the SAT domain nor a wildcard covering",
                 "it. This should be impossible.");
@@ -59,6 +61,7 @@ function certContainsProperNames(urlDomain, subject, subjectAlts) {
         // Yes the certificate contains the SAT domain exactly
     }
 
+    log_debug("TLS cert contains all proper names for this SAT domain");
     return true;
 }
 

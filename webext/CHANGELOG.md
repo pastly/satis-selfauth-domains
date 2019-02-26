@@ -6,6 +6,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+### Changed
+
+- When checking a TLS cert for a SAT domain in the url bar, do not require the
+  traditional part (`foo.com` of `[56char]onion.foo.com`) to be the subject of
+the certificate. It can be a subject alt name (SAN), just like the SAT domain.
+(GH issue #1)
+
 ### Removed
 
 - The hardcoded "preload" list of aternate services known to exist.
