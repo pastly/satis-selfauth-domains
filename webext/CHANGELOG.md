@@ -6,6 +6,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+### Added
+
+- User may filter Alt-Svc headers. We remove them by default, and allow users
+  to reallow them on an individual basis only. If the same Alt-Svc is used on
+multiple domains (as would be the case if cloudflare were still running its
+onion alternate services, for example), it has to be explicitly allowed for
+each domain.
+
 ### Changed
 
 - When checking a TLS cert for a SAT domain in the url bar, do not require the

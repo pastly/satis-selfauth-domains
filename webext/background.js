@@ -96,37 +96,43 @@ function _returnWithSelectAltSvcHeaders(headers, altsvcHeaders) {
     headers = headers.filter(h => h.name != 'alt-svc')
     // The spread operator, used like python's extend() method on arrays
     headers.push(...altsvcHeaders);
+    log_object(headers);
     return {'responseHeaders': headers};
 }
 
 /**
- * Determine if we should keep an alt-svc header.
+ * Determine if the given alt-svc is a SAT domain or onion service, and if so,
+ * if there is a valid onion sig.
  *
- * If it's not a special one that we care about having extra restrictions,
- * return true.
- *
- * If it's a special one -- an onion address or an SAT domain -- then
- * return false if it doesn't pass the extra restirctions. If it does pass,
- * return the OnionSig object.
+ * - If not a SAT domain or onion service, return true
+ * - If a SAT domain or onion service and no onion sig header, return false
+ * - If a SAT domain or onion service and something doesn't check out, return
+ * false
+ * - If a SAT domain or onion service and everything checks out, return the
+ *   onionSig object
  */
-function _shouldKeepAltSvcHeader(as, headers, origin, secInfo) {
+function _extractOnionSigForPossibleSATAltSvc(as, headers, origin, secInfo) {
     let settings = lsget("settings") || new Settings();
     let onion = null;
-    let is_sat_domain = false;
-    let is_onion_domain = false;
+    let isSATDomain = false;
+    let isOnionDomain = false;
     // Is it a sat domain name?
-    onion = onion_v3extractFromPossibleSATDomain(as.domain);
-    if (!onion) {
-        // Is it a v3 onion?
-        onion = onion_v3extractFromPossibleOnionDomain(as.domain);
-        if (onion) {
-            is_onion_domain = true;
+    if (as.domain) {
+        onion = onion_v3extractFromPossibleSATDomain(as.domain);
+        if (!onion) {
+            // Is it a v3 onion?
+            onion = onion_v3extractFromPossibleOnionDomain(as.domain);
+            if (onion) {
+                isOnionDomain = true;
+            }
+        } else {
+            isSATDomain = true;
         }
     } else {
-        is_sat_domain = true;
+        // No domain, so can't be either SAT or v3 onion
     }
 
-    // Not either, so just give it to the user
+    // Not either
     if (!onion) {
         return true;
     }
@@ -151,8 +157,8 @@ function _shouldKeepAltSvcHeader(as, headers, origin, secInfo) {
         }
     }
     if (!onionSig) {
-        log_debug("Alt-Svc is a self-auth domain or .onion but no onion sig",
-            "header so we don't trust it and won't give it to the user");
+        log_debug("Alt-Svc is a SAT domain or .onion but no onion sig",
+            "header.");
         return false;
     }
 
@@ -171,13 +177,13 @@ function _shouldKeepAltSvcHeader(as, headers, origin, secInfo) {
      *
      * I think doing that is harder and not not necessarily even better.
      */
-    if (is_sat_domain && onionSig.domain != as.domain) {
+    if (isSATDomain && onionSig.domain != as.domain) {
         log_debug("The onion sig header is for a different domain",
             "than the one in the alt-svc header. Not giving",
             "the alt-svc header to the user. (",
             onionSig.domain, "vs", as.domain, ")");
         return false;
-    } else if (is_onion_domain && onion.str + "onion." + origin != onionSig.domain) {
+    } else if (isOnionDomain && onion.str + "onion." + origin != onionSig.domain) {
         log_debug("The onion sig header contains", onionSig.domain,
             "but we are looking for", onion.str + "onion." + origin,
             "so we are not giving it to the user.");
@@ -198,7 +204,7 @@ function _shouldKeepAltSvcHeader(as, headers, origin, secInfo) {
 
     /* If the AltSvc is a SAT domain and the user has this option enabled,
      * check that it is in the TLS certificate */
-    if (is_sat_domain && !settings.satAltSvcNotInTLSCertAllowed) {
+    if (isSATDomain && !settings.satAltSvcNotInTLSCertAllowed) {
         log_debug("SAT domain Alt-Svc must be in TLS cert. Checking ...")
         if (!log_assert(secInfo, "We must have securityInfo API")) {
             return false;
@@ -215,7 +221,7 @@ function _shouldKeepAltSvcHeader(as, headers, origin, secInfo) {
 
     /* If the AltSvc is a SAT domain, check that the trad. domain part is in
      * the TLS certificate */
-    if (is_sat_domain) {
+    if (isSATDomain) {
         let baseDomain = onion_extractBaseDomain(as.domain);
         log_debug(
             "SAT domain Alt-Svc must have trad. domain part (", baseDomain,
@@ -276,35 +282,67 @@ async function onHeadersReceived_filterAltSvc(details) {
     let origin = splitURL(details.url).hostname;
     let secInfo = await tryGetSecurityInfo(details.requestId);
 
+    let sites = lsget("altsvcs") || {};
     let keptAltSvc = [];
     for (let as_ of getAltSvcHeaders(headers)) {
         let as = new AltSvc(as_);
-        // If couldn't parse domain out of header, nothing to do
-        if (!as.domain) {
-            _storeAltSvcInState(origin, as, false, false, false);
+        // First, store it if we don't have it yet.
+        if (!(origin in sites)) {
+            sites[origin] = {'alts': {}};
+        }
+        if (!(as.str in sites[origin].alts)) {
+            log_debug("Adding", as.str, "to", origin, "'s list of known altsvcs");
+            sites[origin].alts[as.str] = {
+                'alt': as,
+                'validOnionSig': false,
+                'userTrusts': false,
+                'userDistrusts': false,
+            };
+        }
+        // Make sure user either only trusts (and not distrusts), only
+        // distrusts (and not trusts), or neither trusts nor distrusts
+        //
+        // This condition is a lot to unpack ...
+        // - trusts and userDistrusts can't both be true. That's the condition
+        // inside the assert. If this fails, the string is logged.
+        // - log_assert returns the result of the condition
+        // - and we negate the returned result, so that if the result is false,
+        // we execute the body of this if statement.
+        //
+        // This works out to essentially
+        //     if (!log_assert(!bad, "log message")) { / * ... */ }
+        //     ==> if (!!bad) { /* ... */ }
+        //     ==> if (bad) { /* ... */ }
+        let trusts = sites[origin].alts[as.str].userTrusts;
+        if (!log_assert(
+                !(trusts && sites[origin].alts[as.str].userDistrusts),
+                "User both trusts and distrusts this altsvc. Failing safe.")) {
+            trusts = false;
+        }
+        // Only keep the alt-svc if the user trusts it
+        if (trusts) {
+            log_debug("Keeping Alt-Svc", as.str, "for origin", origin);
             keptAltSvc.push({'name': 'alt-svc', 'value': as.str});
-            continue;
-        }
-        let shouldKeep = _shouldKeepAltSvcHeader(as, headers, origin, secInfo);
-        if (!shouldKeep) {
-            log_debug('Not telling client about', as.domain);
-            continue;
-        }
-        log_debug('Keeping alt-svc header for', as.domain);
-        //log_debug(origin);
-        //log_debug(as.domain);
-        let validOnionSig = false;
-        if (typeof shouldKeep == 'boolean') {
-            // do nothing
         } else {
-            let onionSig = shouldKeep;
-            validOnionSig = onionSig.validSig && onionSig.readAllBytes;
+            log_debug("Removing Alt-Svc", as.str, "for origin", origin);
         }
-
-        _storeAltSvcInState(origin, as, validOnionSig, false, false);
-        keptAltSvc.push({'name': 'alt-svc', 'value': as.str});
+        // Check the onion sig header, if any
+        let onionSig = _extractOnionSigForPossibleSATAltSvc(
+            as, headers, origin, secInfo);
+        if (typeof onionSig == 'boolean' && onionSig) {
+            // returning true means the alt-svc is not a SAT domain or onion
+            // service, don't do anything special
+        } else if (typeof onionSig == 'boolean' && !onionSig) {
+            // returning false means it is a SAT domain or onion service, but
+            // something was wrong (missing onion sig, or it didn't verify
+            // correctly). Set validOnionSig to false
+            sites[origin].alts[as.str].validOnionSig = false;
+        } else {
+            // Otherwise it returned the onionSig object
+            sites[origin].alts[as.str].validOnionSig = onionSig.validSig && onionSig.readAllBytes;
+        }
     }
-
+    lsput("altsvcs", sites);
     return _returnWithSelectAltSvcHeaders(headers, keptAltSvc);
 }
 
@@ -698,6 +736,7 @@ function scheduleSATUpdates() {
 }
 
 lsput("trustedSATLists", {});
+lsput("altsvcs", {});
 addEventListeners();
 scheduleSATUpdates();
 browser.runtime.onMessage.addListener(onMessage);
