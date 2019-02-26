@@ -12,6 +12,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   traditional part (`foo.com` of `[56char]onion.foo.com`) to be the subject of
 the certificate. It can be a subject alt name (SAN), just like the SAT domain.
 (GH issue #1)
+- AltSvc headers are now stored in local state, not session state
 
 ### Removed
 

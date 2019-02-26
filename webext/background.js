@@ -252,7 +252,7 @@ async function tryGetSecurityInfo(reqId) {
 }
 
 function _storeAltSvcInState(origin, alt, validOnionSig) {
-    let sites = ssget("altsvcs") || {};
+    let sites = lsget("altsvcs") || {};
     if (!(origin in sites)) {
         sites[origin] = {
             'alts': {},
@@ -265,7 +265,7 @@ function _storeAltSvcInState(origin, alt, validOnionSig) {
         'alt': alt,
         'onionsig': validOnionSig,
     }
-    ssput("altsvcs", sites);
+    lsput("altsvcs", sites);
 }
 
 async function onHeadersReceived_filterAltSvc(details) {
@@ -422,7 +422,7 @@ function onHeadersReceived_allowAttestedSATDomainsOnly(details) {
 }
 
 function onMessage_giveAltSvcs(origin) {
-    let sites = ssget("altsvcs") || {};
+    let sites = lsget("altsvcs") || {};
     if (origin in sites) {
         return sites[origin]['alts'];
     }
