@@ -251,7 +251,8 @@ async function tryGetSecurityInfo(reqId) {
     return secInfo;
 }
 
-function _storeAltSvcInState(origin, alt, validOnionSig) {
+function _storeAltSvcInState(
+        origin, alt, validOnionSig, userTrusts, userDistrusts) {
     let sites = lsget("altsvcs") || {};
     if (!(origin in sites)) {
         sites[origin] = {
@@ -263,7 +264,9 @@ function _storeAltSvcInState(origin, alt, validOnionSig) {
     }
     sites[origin]['alts'][alt.str] = {
         'alt': alt,
-        'onionsig': validOnionSig,
+        'validOnionSig': validOnionSig,
+        'userTrusts': userTrusts,
+        'userDistrusts': userDistrusts,
     }
     lsput("altsvcs", sites);
 }
@@ -278,7 +281,7 @@ async function onHeadersReceived_filterAltSvc(details) {
         let as = new AltSvc(as_);
         // If couldn't parse domain out of header, nothing to do
         if (!as.domain) {
-            _storeAltSvcInState(origin, as, false, false);
+            _storeAltSvcInState(origin, as, false, false, false);
             keptAltSvc.push({'name': 'alt-svc', 'value': as.str});
             continue;
         }
@@ -298,7 +301,7 @@ async function onHeadersReceived_filterAltSvc(details) {
             validOnionSig = onionSig.validSig && onionSig.readAllBytes;
         }
 
-        _storeAltSvcInState(origin, as, validOnionSig);
+        _storeAltSvcInState(origin, as, validOnionSig, false, false);
         keptAltSvc.push({'name': 'alt-svc', 'value': as.str});
     }
 
@@ -580,6 +583,28 @@ function onMessage_setSetting(msg) {
     return true;
 }
 
+function onMessage_setAltSvcTrusted(msg) {
+    let sites = lsget("altsvcs") || {};
+    let origin = msg.origin;
+    let altstr = msg.altstr;
+    let trusted = msg.trust;
+    if (!(origin in sites)) {
+        log_debug(
+            "Unknown origin", origin, "cannot set trust of altsvc", altstr);
+        return false;
+    }
+    if (!(altstr in sites[origin].alts)) {
+        log_debug(
+            "Unknown altsvc", altstr, "for origin", origin,
+            "cannot set trust");
+        return false;
+    }
+    sites[origin].alts[altstr].userTrusts = trusted;
+    sites[origin].alts[altstr].userDistrusts = !trusted;
+    lsput("altsvcs", sites);
+    return true;
+}
+
 function onMessage(msg_obj, sender, responseFunc) {
     let id = msg_obj.id;
     let msg = msg_obj.msg;
@@ -603,6 +628,8 @@ function onMessage(msg_obj, sender, responseFunc) {
         responseFunc(onMessage_setSATDomainListEnabled(msg));
     } else if (id == "deleteSATDomainList") {
         responseFunc(onMessage_deleteSATDomainList(msg));
+    } else if (id == "setAltSvcTrusted") {
+        responseFunc(onMessage_setAltSvcTrusted(msg));
     } else {
         log_error("Got message id we don't know how to handle.",
             "Ignoring: ", id);

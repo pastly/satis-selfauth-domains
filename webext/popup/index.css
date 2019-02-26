@@ -26,7 +26,14 @@ h1 {
     margin: 20px;
 }
 
-#sat_list_button {
+#satListButton,
+.trustButton,
+.distructButton {
     -mox-appearance:button;
     -webkit-appearance:button;
+}
+
+.trustButton,
+.distructButton {
+    display: inline-block;
 }

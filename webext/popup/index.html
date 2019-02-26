@@ -8,10 +8,13 @@
 <div id=altsvccontainer class=hide>
 <!-- <h1>Alternate Services for <span id=origin></span></h1> -->
 <h1>Alternate Services for this domain</h1>
-<p>These are the alternate services we've allowed your browser to use at its
-discretion.</p>
+<p>
+These are the alternate services we've noticed from this domain. We have
+prevented the browser from using any that are marked
+<span class=bad>not allowed</span> in the <strong>trust</strong> column.
+</p>
 <table id=altsvc>
-	<tr><th>domain</th><th>onion sig</th></tr>
+    <tr><th>domain</th><th>onion sig</th><th>trust</th></tr>
 </table>
 </div> <!-- altsvccontainer -->
 
@@ -21,7 +24,7 @@ discretion.</p>
 </div> <!-- existonsatlistcontainer -->
 
 <div id=buttons>
-<a target="_blank" id="sat_list_button">View SAT lists</a>
+<a target="_blank" id="satListButton">View SAT lists</a>
 </div> <!-- buttons -->
 
 <div id=settings>

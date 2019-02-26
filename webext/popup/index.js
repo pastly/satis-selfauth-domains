@@ -1,5 +1,5 @@
 function addButtonTargets() {
-    let elm = document.getElementById("sat_list_button");
+    let elm = document.getElementById("satListButton");
     elm.href = browser.runtime.getURL("pages/satlists.html");
 }
 
@@ -48,19 +48,67 @@ function addSettingsEvents() {
 //        .appendChild(document.createTextNode(s));
 //}
 
-function addAltSvc(as, onionsig) {
-    document.getElementById("altsvccontainer").classList.remove("hide");
-    let domain = !!as.domain ? as.domain : as.str;
-    let table = document.getElementById("altsvc");
-    let tr = document.createElement("tr");
+function _buildTrustButton(origin, altstr, trust, longText) {
+    let goodText = longText ? "Change ✓" : "✓" ;
+    let badText = longText ? "Change ✘" : "✘" ;
+    let d = document;
+    let but = d.createElement("a");
+    let textNode = d.createTextNode(trust ? goodText : badText);
+    but.classList.add(trust ? "trustButton" : "distructButton");
+    but.appendChild(textNode);
+    but.addEventListener("click", function() {
+        let resp = sendMessage(
+            "setAltSvcTrusted",
+            {"altstr": altstr, "origin": origin, "trust": trust});
+        resp.then(function (it_worked) {
+            if (it_worked) {
+                textNode.nodeValue = "OK! Set to " + (trust ? "yes" : "no");
+            } else {
+                textNode.nodeValue = "Failed";
+            }
+        }, log_error);
+    });
+    return but;
+}
 
-    let td = document.createElement("td");
-    td.appendChild(document.createTextNode(domain));
+function addAltSvc(origin, as, validOnionSig, userTrusts, userDistrusts) {
+    let d = document;
+    d.getElementById("altsvccontainer").classList.remove("hide");
+    let domain = !!as.domain ? as.domain : as.str;
+    let table = d.getElementById("altsvc");
+    let tr = d.createElement("tr");
+
+    let td = d.createElement("td");
+    td.appendChild(d.createTextNode(domain));
     tr.appendChild(td);
 
-    td = document.createElement("td");
-    td.appendChild(document.createTextNode(onionsig ? "Yes" : "No"));
-    td.classList.add(onionsig ? "good" : "bad");
+    // onion sig
+    td = d.createElement("td");
+    td.appendChild(d.createTextNode(validOnionSig ? "Yes" : "No"));
+    td.classList.add(validOnionSig ? "good" : "bad");
+    tr.appendChild(td);
+
+    // trust
+    td = d.createElement("td");
+    if (!userTrusts && !userDistrusts) {
+        longText = false;
+        let butTrust = _buildTrustButton(origin, as.str, true, longText);
+        let butDistrust = _buildTrustButton(origin, as.str, false, longText);
+        td.appendChild(butTrust);
+        td.appendChild(butDistrust);
+    } else if (userDistrusts) {
+        let longText = true;
+        td.appendChild(d.createTextNode("No"));
+        td.classList.add("bad");
+        let but = _buildTrustButton(origin, as.str, true, longText);
+        td.appendChild(but);
+    } else if (userTrusts) {
+        let longText = true;
+        td.appendChild(d.createTextNode("Yes"));
+        td.classList.add("good");
+        let but = _buildTrustButton(origin, as.str, false, longText);
+        td.appendChild(but);
+    }
     tr.appendChild(td);
 
     table.appendChild(tr);
@@ -70,7 +118,7 @@ function populatePopupWindow(tabs) {
     let origin = splitURL(tabs[0].url).hostname;
     //setOrigin(origin);
     let resp_altsvc = sendMessage("giveAltSvcs", origin);
-    resp_altsvc.then(populateAltSvc, log_error);
+    resp_altsvc.then(function(alts) {populateAltSvc(origin, alts);}, log_error);
     let resp_satlists = sendMessage("giveTrustedSATListsContaining", origin);
     resp_satlists.then(populateSATLists(origin), log_error);
     addButtonTargets();
@@ -79,9 +127,13 @@ function populatePopupWindow(tabs) {
     addSettingsEvents();
 }
 
-function populateAltSvc(alts) {
+function populateAltSvc(origin, alts) {
     for (altstr in alts) {
-        addAltSvc(alts[altstr]['alt'], alts[altstr]['onionsig']);
+        addAltSvc(
+            origin,
+            alts[altstr].alt, alts[altstr].validOnionSig,
+            alts[altstr].userTrusts, alts[altstr].userDistrusts,
+        );
     }
 }
 
