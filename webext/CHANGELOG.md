@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+Nothing.
+
+## v1.2.0 - 2019-02-27
+
 ### Added
 
 - User may filter Alt-Svc headers. We remove them by default, and allow users
@@ -24,7 +28,7 @@ the certificate. It can be a subject alt name (SAN), just like the SAT domain.
 
 ### Removed
 
-- The hardcoded "preload" list of aternate services known to exist.
+- The hardcoded "preload" list of alternate services known to exist.
 
 ## v1.1.0 - 2019-02-22
 
