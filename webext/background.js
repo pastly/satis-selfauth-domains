@@ -462,25 +462,36 @@ function onHeadersReceived_allowAttestedSATDomainsOnly(details) {
 
 }
 
+function findRewriteSATDomain(baseDomain) {
+    let d = lsget("trustedSATLists") || {};
+    for (h in d) {
+        let listObj = d[h];
+        if (!listObj.is_enabled || !listObj.do_rewrite) {
+            continue;
+        }
+        let match = listObj.list.find(function(i) {return i.to == baseDomain});
+        if (!match) {
+            continue;
+        }
+        let satDomain = match.from;
+        return satDomain;
+        let newUrl = url.href.replace(match.to, match.from);
+        return newUrl;
+    }
+    return null;
+}
+
 function onBeforeRequest_rewriteSATDomains(details) {
     return new Promise((resolve, reject) => {
-        //log_object(details);
         try {
-            let satLists = lsget("trustedSATLists") || {};
-            for (h in satLists) {
-                let listObj = satLists[h];
-                if (!listObj.is_enabled || !listObj.do_rewrite) {
-                    continue;
-                }
-                let url = splitURL(details.url);
-                let match = listObj.list.find(function(i) {return i.to == url.hostname});
-                if (!match) {
-                    continue;
-                }
-                let newUrl = url.href.replace(match.to, match.from);
+            let url = splitURL(details.url);
+            let satDomain = findRewriteSATDomain(url.hostname);
+            if (satDomain) {
+                let newUrl = url.href.replace(url.hostname, satDomain);
                 resolve({"redirectUrl": newUrl});
+            } else {
+                resolve({"cancel": false});
             }
-            resolve({"cancel": false});
         } catch (e) {
             log_error(e);
             reject(e);
