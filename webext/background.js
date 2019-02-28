@@ -735,8 +735,8 @@ function scheduleSATUpdates() {
     }
 }
 
-lsput("trustedSATLists", {});
-lsput("altsvcs", {});
+//lsput("trustedSATLists", {});
+//lsput("altsvcs", {});
 addEventListeners();
 scheduleSATUpdates();
 browser.runtime.onMessage.addListener(onMessage);

@@ -6,7 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
-Nothing.
+### Changed
+
+- Stop clearing state on startup. This is left over from testing. Developers
+  can uncomment the state-clearing lines near the bottom of background.js if
+they want this behavior.
 
 ## v1.2.0 - 2019-02-27
 
