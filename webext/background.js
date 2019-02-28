@@ -540,7 +540,7 @@ function onMessage_satDomainList(obj) {
 
     // Add it to the trusted storage if necessary
     let trustedSATLists = lsget("trustedSATLists") || {};
-    let hash = sha3_256.create().update(new Uint8Array(url)).hex();
+    let hash = sha3_256.create().update(url.href).hex();
     if (!(hash in trustedSATLists)) {
         log_debug("Adding", url, "to trusted SAT lists");
         trustedSATLists[hash] = new SATList(

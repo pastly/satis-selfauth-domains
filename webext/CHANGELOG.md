@@ -18,6 +18,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 they want this behavior.
 - Change SAT list update interval from 10 minutes to 1 hour.
 
+### Fixed
+
+- Not correctly hashing update urls for SAT lists, causing them all to have the
+  same hash value, thus only allowing the user to have one list
+
 ## v1.2.0 - 2019-02-27
 
 ### Added
