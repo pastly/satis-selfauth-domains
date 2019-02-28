@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+### Added
+
+- Optionally rewrite domains to their SAT domain if on a trusted SAT list. This
+  is optional per-list.
+
 ### Changed
 
 - Stop clearing state on startup. This is left over from testing. Developers

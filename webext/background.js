@@ -461,6 +461,25 @@ function onHeadersReceived_allowAttestedSATDomainsOnly(details) {
 
 }
 
+function onBeforeRequest_rewriteSATDomains(details) {
+    //log_object(details);
+    let satLists = lsget("trustedSATLists") || {};
+    for (h in satLists) {
+        let listObj = satLists[h];
+        if (!listObj.is_enabled || !listObj.do_rewrite) {
+            continue;
+        }
+        let url = splitURL(details.url);
+        let match = listObj.list.find(function(i) {return i.to == url.hostname});
+        if (!match) {
+            continue;
+        }
+        let newUrl = url.href.replace(match.to, match.from);
+        return {"redirectUrl": newUrl};
+    }
+    return {"cancel": false};
+}
+
 function onMessage_giveAltSvcs(origin) {
     let sites = lsget("altsvcs") || {};
     if (origin in sites) {
@@ -525,7 +544,7 @@ function onMessage_satDomainList(obj) {
     if (!(hash in trustedSATLists)) {
         log_debug("Adding", url, "to trusted SAT lists");
         trustedSATLists[hash] = new SATList(
-            obj.url, list, false, false, null,
+            obj.url, list, false, false, false, null,
             onion_extractBaseDomain(url.hostname));
         lsput("trustedSATLists", trustedSATLists);
         setTimeout(updateSATList, SAT_LIST_UPDATE_INTERVAL * 1000, hash);
@@ -568,6 +587,10 @@ function onMessage_setSATDomainListTrusted(msg) {
     log_debug("Setting is_enabled to", msg.trusted);
     d[msg.hash].is_trusted = msg.trusted;
     d[msg.hash].is_enabled = msg.trusted;
+    if (!msg.trusted) {
+        log_debug("Setting do_rewrite to", msg.trusted);
+        d[msg.hash].do_rewrite = msg.trusted;
+    }
     lsput("trustedSATLists", d);
     return true;
 }
@@ -581,6 +604,23 @@ function onMessage_setSATDomainListEnabled(msg) {
     }
     log_debug("Setting is_enabled to", msg.enabled);
     d[msg.hash].is_enabled = msg.enabled;
+    if (!msg.enabled) {
+        log_debug("Setting do_rewrite to", msg.enabled);
+        d[msg.hash].do_rewrite = msg.enabled;
+    }
+    lsput("trustedSATLists", d);
+    return true;
+}
+
+function onMessage_setSATDomainListRewrite(msg) {
+    let d = lsget("trustedSATLists") || {};
+    if (!(msg.hash in d)) {
+        log_error("Asked to set SAT domain list do_rewrite", msg.rewrite,
+            "for id", msg.hash, "but we don't know about that list");
+        return false;
+    }
+    log_debug("Setting do_rewrite to", msg.rewrite);
+    d[msg.hash].do_rewrite = msg.rewrite;
     lsput("trustedSATLists", d);
     return true;
 }
@@ -663,6 +703,8 @@ function onMessage(msg_obj, sender, responseFunc) {
         responseFunc(onMessage_setSATDomainListTrusted(msg));
     } else if (id == "setSATDomainListEnabled") {
         responseFunc(onMessage_setSATDomainListEnabled(msg));
+    } else if (id == "setSATDomainListRewrite") {
+        responseFunc(onMessage_setSATDomainListRewrite(msg));
     } else if (id == "deleteSATDomainList") {
         responseFunc(onMessage_deleteSATDomainList(msg));
     } else if (id == "setAltSvcTrusted") {
@@ -688,6 +730,11 @@ function addEventListeners() {
         onHeadersReceived_allowAttestedSATDomainsOnly,
         {urls: ["<all_urls>"]},
         ["blocking", "responseHeaders"]
+    );
+    browser.webRequest.onBeforeRequest.addListener(
+        onBeforeRequest_rewriteSATDomains,
+        {urls: ["<all_urls>"]},
+        ["blocking"]
     );
 }
 

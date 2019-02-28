@@ -90,6 +90,27 @@ function addSATList(listObj) {
         div_new.appendChild(form);
     }
 
+    if (listObj.is_enabled) {
+        form = doc.createElement("form");
+        label = doc.createElement("label");
+        let input_rewrite = doc.createElement("input");
+        label.for = listObj.id + "-rewrite";
+        input_rewrite.id = listObj.id + "-rewrite";
+        input_rewrite.type = "checkbox";
+        input_rewrite.checked = listObj.do_rewrite;
+        label.appendChild(doc.createTextNode("Use rewrites"));
+        input_rewrite.addEventListener("change", function() {
+            let resp = sendMessage(
+                "setSATDomainListRewrite",
+                {'hash': listObj.id, 'rewrite': input_rewrite.checked});
+            resp.then(function() {}, log_debug);
+            window.location.reload(false); // false means don't make a web request
+        });
+        form.appendChild(label);
+        form.appendChild(input_rewrite);
+        div_new.appendChild(form);
+    }
+
     form = doc.createElement("form");
     button = doc.createElement("button");
     button.appendChild(doc.createTextNode("Delete this list"));
