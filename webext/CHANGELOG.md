@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+Nothing
+
+## v1.3.0 - 2019-02-28
+
 ### Added
 
 - Optionally rewrite domains to their SAT domain if on a trusted SAT list. This
