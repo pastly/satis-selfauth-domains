@@ -1,6 +1,6 @@
 var nacl = null;
 
-var SAT_LIST_UPDATE_INTERVAL = 3600; // seconds
+const SAT_LIST_UPDATE_INTERVAL = 3600; // seconds
 
 function satListsContaining(domain) {
     let d = lsget("trustedSATLists") || {};
