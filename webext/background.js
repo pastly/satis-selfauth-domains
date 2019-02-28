@@ -96,7 +96,6 @@ function _returnWithSelectAltSvcHeaders(headers, altsvcHeaders) {
     headers = headers.filter(h => h.name != 'alt-svc')
     // The spread operator, used like python's extend() method on arrays
     headers.push(...altsvcHeaders);
-    log_object(headers);
     return {'responseHeaders': headers};
 }
 
