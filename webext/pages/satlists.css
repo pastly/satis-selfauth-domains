@@ -24,3 +24,11 @@ label {
     background-color:#dbf44e;/* yellowish */
     border:5px solid #c2e016;/* yellowish */
 }
+
+table {
+    border-collapse: collapse;
+}
+th, td {
+    min-width: 10em;
+    border: 1px solid black;
+}

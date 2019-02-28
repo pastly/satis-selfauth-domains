@@ -1,6 +1,7 @@
 var nacl = null;
 
 const SAT_LIST_UPDATE_INTERVAL = 3600; // seconds
+const PERSONAL_LIST_HASH = sha3_256.create().update("personal").hex();
 
 function satListsContaining(domain) {
     let d = lsget("trustedSATLists") || {};
@@ -462,22 +463,29 @@ function onHeadersReceived_allowAttestedSATDomainsOnly(details) {
 }
 
 function onBeforeRequest_rewriteSATDomains(details) {
-    //log_object(details);
-    let satLists = lsget("trustedSATLists") || {};
-    for (h in satLists) {
-        let listObj = satLists[h];
-        if (!listObj.is_enabled || !listObj.do_rewrite) {
-            continue;
+    return new Promise((resolve, reject) => {
+        //log_object(details);
+        try {
+            let satLists = lsget("trustedSATLists") || {};
+            for (h in satLists) {
+                let listObj = satLists[h];
+                if (!listObj.is_enabled || !listObj.do_rewrite) {
+                    continue;
+                }
+                let url = splitURL(details.url);
+                let match = listObj.list.find(function(i) {return i.to == url.hostname});
+                if (!match) {
+                    continue;
+                }
+                let newUrl = url.href.replace(match.to, match.from);
+                resolve({"redirectUrl": newUrl});
+            }
+            resolve({"cancel": false});
+        } catch (e) {
+            log_error(e);
+            reject(e);
         }
-        let url = splitURL(details.url);
-        let match = listObj.list.find(function(i) {return i.to == url.hostname});
-        if (!match) {
-            continue;
-        }
-        let newUrl = url.href.replace(match.to, match.from);
-        return {"redirectUrl": newUrl};
-    }
-    return {"cancel": false};
+    });
 }
 
 function onMessage_giveAltSvcs(origin) {
@@ -682,6 +690,62 @@ function onMessage_setAltSvcTrusted(msg) {
     return true;
 }
 
+function onMessage_addPersonalSATListItem(msg) {
+    let sat = msg.sat.trim();
+    if (sat.startsWith("http://") || sat.startsWith("https://")) {
+        // Remove first 7 chars (may be a leftover "/" if https)
+        sat = sat.substring("http://".length);
+        // Remove leading "/", if it exists
+        if (sat.charAt(0) == "/") {
+            sat = sat.substring(1);
+        }
+    }
+    // Remove everything after the domain, if the user gave a URL.
+    // So if we have aaaaonion.foo.com/index.html, remove /index.html
+    if (sat.includes("/")) {
+        sat = sat.substring(0, sat.indexOf("/"))
+    }
+    let is_sat = !!onion_v3extractFromPossibleSATDomain(sat);
+    if (!is_sat) {
+        log_error(sat, "is not a SAT domain");
+        return;
+    }
+    let base = onion_extractBaseDomain(sat);
+    if (!base) {
+        log_error("Unabled to get base domain from", sat);
+        return;
+    }
+    if (!sat.endsWith(base)) {
+        log_error("SAT domain", sat, "does not end with", base);
+        return;
+    }
+    let d = lsget("trustedSATLists") || {};
+    let hash = PERSONAL_LIST_HASH;
+    if (!log_assert(hash in d, "Cannot find personal SAT list")) {
+        return;
+    };
+    let listObj = d[hash];
+    listObj.list.push({'from': sat, 'to': base});
+    d[hash] = listObj;
+    lsput("trustedSATLists", d);
+    return;
+}
+
+function onMessage_deletePersonalSATListItem(msg) {
+    let d = lsget("trustedSATLists") || {};
+    let hash = PERSONAL_LIST_HASH;
+    if (!log_assert(hash in d, "Cannot find personal SAT list")) {
+        return false;
+    };
+    let listObj = d[hash];
+    listObj.list = listObj.list.filter(function (i) {
+        return i.from != msg.item.from || i.to != msg.item.to;
+    });
+    d[hash] = listObj;
+    lsput("trustedSATLists", d);
+    return true;
+}
+
 function onMessage(msg_obj, sender, responseFunc) {
     let id = msg_obj.id;
     let msg = msg_obj.msg;
@@ -709,6 +773,10 @@ function onMessage(msg_obj, sender, responseFunc) {
         responseFunc(onMessage_deleteSATDomainList(msg));
     } else if (id == "setAltSvcTrusted") {
         responseFunc(onMessage_setAltSvcTrusted(msg));
+    } else if (id == "addPersonalSATListItem") {
+        responseFunc(onMessage_addPersonalSATListItem(msg));
+    } else if (id == "deletePersonalSATListItem") {
+        responseFunc(onMessage_deletePersonalSATListItem(msg));
     } else {
         log_error("Got message id we don't know how to handle.",
             "Ignoring: ", id);
@@ -745,7 +813,14 @@ function updateSATList(hash) {
             "Nothing to do");
         return;
     }
+
     let listObj = d[hash];
+    if (!log_assert(
+            !libObj.is_personal,
+            "Refusing to attempt update of personal list")) {
+        return;
+    }
+
     var xmlHttp = new XMLHttpRequest();
     xmlHttp.onreadystatechange = function() {
         if (xmlHttp.readyState == 4 && xmlHttp.status == 200) {
@@ -768,6 +843,9 @@ function scheduleSATUpdates() {
     let d = lsget("trustedSATLists") || {};
     for (hash in d) {
         let listObj = d[hash];
+        if (listObj.is_personal) {
+            continue;
+        }
         let now = new Date()
         let nextUpdate = new Date(
             (listObj.lastUpdate + SAT_LIST_UPDATE_INTERVAL) * 1000);
@@ -781,10 +859,23 @@ function scheduleSATUpdates() {
     }
 }
 
+function ensurePersonalSATList() {
+    let d = lsget("trustedSATLists") || {};
+    let hash = PERSONAL_LIST_HASH;
+    if (!(hash in d)) {
+        log_warn("Creating blank personal SAT mapping list");
+        d[hash] = new SATList(
+            "personal", [], true, true, true, 0, "Personal");
+    }
+    d[hash].is_personal = true;
+    lsput("trustedSATLists", d);
+}
+
 //lsput("trustedSATLists", {});
 //lsput("altsvcs", {});
 addEventListeners();
 scheduleSATUpdates();
+ensurePersonalSATList();
 browser.runtime.onMessage.addListener(onMessage);
 nacl_factory.instantiate(function (nacl_) {
     nacl = nacl_;

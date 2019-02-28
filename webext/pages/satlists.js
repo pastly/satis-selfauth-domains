@@ -1,18 +1,23 @@
 function addSATList(listObj) {
+    if (!log_assert(
+            !listObj.is_personal,
+            "Personal lists have their own addSATList function")) {
+        return;
+    }
     let doc = document;
     let div_top = doc.getElementById(
         (listObj.is_trusted ? "trustedlist" : "untrustedlist"));
     let div_new = doc.createElement("div");
 
-    let h2 = doc.createElement("h2");
-    h2.appendChild(doc.createTextNode(
+    let h3 = doc.createElement("h3");
+    h3.appendChild(doc.createTextNode(
         "List " +
         (listObj.name ? listObj.name : "(Unamed)") +
         (!listObj.is_enabled ? " (Disabled)" : "")));
     if (!listObj.is_enabled) {
-        h2.classList.add("disabled");
+        h3.classList.add("disabled");
     }
-    div_new.appendChild(h2);
+    div_new.appendChild(h3);
 
     let p = doc.createElement("p");
     p.appendChild(doc.createTextNode(
@@ -123,9 +128,9 @@ function addSATList(listObj) {
     form.appendChild(button);
     div_new.appendChild(form);
 
-    let h3 = doc.createElement("h3");
-    h3.appendChild(doc.createTextNode("Contents"));
-    div_new.appendChild(h3);
+    let h4 = doc.createElement("h4");
+    h4.appendChild(doc.createTextNode("Contents"));
+    div_new.appendChild(h4);
 
     let ul = doc.createElement("ul");
     for (map of listObj.list) {
@@ -147,10 +152,120 @@ function addSATList(listObj) {
     div_top.appendChild(div_new);
 }
 
+function addPersonalSATList(listObj) {
+    if (!log_assert(
+            listObj.is_personal,
+            "Non-personal list in personal func")) {
+        return;
+    }
+    log_assert(listObj.name, "Personal list should have a name");
+    doc = document;
+    let div_top = doc.getElementById("personallist");
+    let div_new = doc.createElement("div");
+
+    let form = doc.createElement("form");
+    let label = doc.createElement("label");
+    let input_rewrite = doc.createElement("input");
+    label.for = listObj.id + "-rewrite";
+    input_rewrite.id = listObj.id + "-rewrite";
+    input_rewrite.type = "checkbox";
+    input_rewrite.checked = listObj.do_rewrite;
+    label.appendChild(doc.createTextNode("Use rewrites"));
+    input_rewrite.addEventListener("change", function() {
+        let resp = sendMessage(
+            "setSATDomainListRewrite",
+            {'hash': listObj.id, 'rewrite': input_rewrite.checked});
+        resp.then(function() {}, log_debug);
+        window.location.reload(false); // false means don't make a web request
+    });
+    form.appendChild(label);
+    form.appendChild(input_rewrite);
+    div_new.appendChild(form);
+
+    let h3 = doc.createElement("h3");
+    h3.appendChild(doc.createTextNode("Entries"));
+    div_new.appendChild(h3);
+
+    let tab = doc.createElement("table");
+    let tr = doc.createElement("tr");
+    let td;
+    let button;
+
+    tr = doc.createElement("tr");
+    td = doc.createElement("th");
+    td.appendChild(doc.createTextNode("Base domain"));
+    tr.appendChild(td);
+    td = doc.createElement("th");
+    td.appendChild(doc.createTextNode("SAT domain"));
+    tr.appendChild(td);
+    tab.appendChild(tr);
+
+    for (item of listObj.list) {
+        let from_a = doc.createElement("a");
+        from_a.href = "https://" + item.from;
+        from_a.appendChild(doc.createTextNode(item.from));
+        let to_a = doc.createElement("a");
+        to_a.href = "https://" + item.to;
+        to_a.appendChild(doc.createTextNode(item.to));
+        tr = doc.createElement("tr");
+        td = doc.createElement("td");
+        td.appendChild(to_a);
+        tr.appendChild(td);
+        td = doc.createElement("td");
+        td.appendChild(from_a);
+        tr.appendChild(td);
+        tab.appendChild(tr);
+
+        td = doc.createElement("td");
+        form = doc.createElement("form");
+        button = doc.createElement("button");
+        button.appendChild(doc.createTextNode("Delete ✘"));
+        let mapping = item;
+        button.addEventListener("click", function() {
+            let resp = sendMessage(
+                "deletePersonalSATListItem", {"item": mapping})
+            resp.then(function() {}, log_debug);
+        });
+        form.appendChild(button);
+        td.appendChild(form);
+        tr.appendChild(td);
+    }
+
+    div_new.appendChild(tab);
+    div_top.appendChild(div_new);
+}
+
+function addAddPersonalEntry() {
+    doc = document;
+    let div_top = doc.getElementById("personallist");
+    let div_new = doc.createElement("div");
+    let form = doc.createElement("form");
+    let input = doc.createElement("input");
+    let button = doc.createElement("button");
+    input.id = "add-personal-entry";
+    input.type = "text";
+    input.placeholder = "aaaaaaaaonion.foo.com";
+    button.appendChild(doc.createTextNode("Add"));
+    button.addEventListener("click", function() {
+        let resp = sendMessage(
+            "addPersonalSATListItem", {"sat": input.value});
+        resp.then(log_debug, log_error);
+    });
+    form.appendChild(input);
+    form.appendChild(button);
+    div_new.appendChild(form);
+    div_top.appendChild(div_new);
+}
+
 function populateTrustedSATLists(obj) {
     for (hash in obj) {
-        addSATList(obj[hash]);
+        if (!obj[hash].is_personal) {
+            addSATList(obj[hash]);
+        } else {
+            addPersonalSATList(obj[hash]);
+        }
     }
+    addAddPersonalEntry();
 }
 
 function main() {

@@ -10,5 +10,6 @@ class SATList {
         this.is_trusted = trusted;
         this.is_enabled = enabled;
         this.do_rewrite = rewrite;
+        this.is_personal = false;
     }
 }

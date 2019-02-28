@@ -10,6 +10,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 - Optionally rewrite domains to their SAT domain if on a trusted SAT list. This
   is optional per-list.
+- Personal SAT domain list where the user can store SAT domains they've
+  discovered. Just like with other trusted SAT lists, optionally allow base
+domains to be rewritten to SAT domains.
 
 ### Changed
 
