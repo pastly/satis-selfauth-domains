@@ -6,7 +6,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
-Nothing
+### Fixed
+
+- Disallow duplicate entries on personal SAT list. (GH issue #6)
 
 ## v1.3.0 - 2019-02-28
 

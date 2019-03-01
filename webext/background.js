@@ -736,6 +736,13 @@ function onMessage_addPersonalSATListItem(msg) {
         return;
     };
     let listObj = d[hash];
+    let matches = listObj.list.filter(function(i) {
+        return i.from == sat && i.to == base;
+    });
+    if (matches.length > 0) {
+        log_debug("Already have this personal sat list entry. Ignoring");
+        return;
+    }
     listObj.list.push({'from': sat, 'to': base});
     d[hash] = listObj;
     lsput("trustedSATLists", d);
