@@ -2,6 +2,21 @@ var nacl = null;
 
 const SAT_LIST_UPDATE_INTERVAL = 3600; // seconds
 const PERSONAL_LIST_HASH = sha3_256.create().update("personal").hex();
+const FAKE_ONION = "zfob4nth675763zthpij33iq4pz5q4qthr3gydih4qbdiwtypr2e3bqd"
+
+function makeFakeSATLists(numLists, numPerList) {
+    let d = {}
+    for (var lnum = 0; lnum < numLists; lnum++) {
+        let domain = "foo" + lnum + ".com";
+        let l = [];
+        for (var i = 0; i < numPerList; i++) {
+            let subdomain = i + "." + domain;
+            l.push({"to": subdomain, "from": FAKE_ONION + "onion." + subdomain});
+        }
+        d[domain] = new SATList(domain, l, true, true, true, 0, domain);
+    }
+    return d;
+}
 
 function satListsContaining(domain) {
     let d = lsget("trustedSATLists") || {};
@@ -882,10 +897,44 @@ function ensurePersonalSATList() {
     lsput("trustedSATLists", d);
 }
 
-//lsput("trustedSATLists", {});
-//lsput("altsvcs", {});
+function leftMedian(arr) {
+    arr.sort();
+    return arr[Math.round(arr.length/2)];
+}
+
+function runPerformanceTests() {
+    let numTrials = 1000;
+    for (var numLists = 1; numLists <= 10000; numLists *= 10) {
+        for (var listLen = 1; listLen <= 10000; listLen *= 10) {
+            let times = [];
+            try {
+                lsput("trustedSATLists", makeFakeSATLists(numLists, listLen));
+            } catch (e) {
+                log_error(e);
+                continue;
+            }
+            if (numLists * listLen > 100000) {
+                continue;
+            }
+            for (var i = 0; i < numTrials; i++) {
+                let start = window.performance.now();
+                findRewriteSATDomain("notonanylist.com");
+                let end = window.performance.now();
+                times.push((end-start)/1000.0);
+            }
+            let med = leftMedian(times);
+            let med_ms = med * 1000 + "ms";
+            log_debug("numLists=" + numLists + " listLen=" + listLen + " median=" + med_ms);
+        }
+    }
+}
+
+runPerformanceTests();
+
+lsput("trustedSATLists", {});
+lsput("altsvcs", {});
 addEventListeners();
-scheduleSATUpdates();
+//scheduleSATUpdates();
 ensurePersonalSATList();
 browser.runtime.onMessage.addListener(onMessage);
 nacl_factory.instantiate(function (nacl_) {
