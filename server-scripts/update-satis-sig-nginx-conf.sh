@@ -3,13 +3,13 @@ set -e
 
 # Variables
 ####################################
-satis_sig_fname="/home/satis/src/tor/data/hs/satis_sig"
-satis_sig_bad_time_fname="/home/satis/src/tor/data/hs/satis_sig_bad_time"
-satis_sig_bad_fp_fname="/home/satis/src/tor/data/hs/satis_sig_bad_fp"
-satis_sig_bad_domain_fname="/home/satis/src/tor/data/hs/satis_sig_bad_domain"
-satis_sig_bad_sig_fname="/home/satis/src/tor/data/hs/satis_sig_bad_sig"
+satis_sig_fname="/home/satis/src/tor/data/hs-example.com/satis_sig"
+satis_sig_bad_time_fname="/home/satis/src/tor/data/hs-example.com/satis_sig_bad_time"
+satis_sig_bad_fp_fname="/home/satis/src/tor/data/hs-example.com/satis_sig_bad_fp"
+satis_sig_bad_domain_fname="/home/satis/src/tor/data/hs-example.com/satis_sig_bad_domain"
+satis_sig_bad_sig_fname="/home/satis/src/tor/data/hs-example.com/satis_sig_bad_sig"
 nginx_tmpl_fname="/root/satis/nginx.conf.tmpl"
-nginx_out_fname="/etc/nginx/sites-available/satis.system33.pw"
+nginx_out_fname="/etc/nginx/sites-available/example.com"
 reload_nginx_command="systemctl reload nginx"
 
 
