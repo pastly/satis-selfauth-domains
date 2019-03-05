@@ -3,8 +3,12 @@ The following license applies everything here EXCEPT
 - Tor (excluding our changes; they are covered by this license) which is not
   ours and is licensed under the 3-clause BSD license
 
-- webext/firefox.patch, written by Shane Caraveo and a derivative of which is
-  included in Firefox now. https://bugzilla.mozilla.org/show_bug.cgi?id=1322748
+- Qny source files (probably in webext/lib) that have a header that separate
+  copyright/license infromation. At the time of writing, this means
+
+   - webext/lib/asn1js/\*
+   - webext/lib/sha3.js
+   - webext/lib/nacl_factory.js
 
 -------------------------------------------------------------------------------
 

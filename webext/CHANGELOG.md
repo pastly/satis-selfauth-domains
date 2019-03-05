@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+Nothing
+
+## v1.3.1 - 2019-03-05
+
 ### Changed
 
 - Make SAT list variables named `from` and `to` be more logical and
