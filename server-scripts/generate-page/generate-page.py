@@ -11,25 +11,26 @@ logging.basicConfig(format='%(asctime)s %(levelname)s %(threadName)s '
                     level=logging.DEBUG)
 log = logging.getLogger(__name__)
 
-LIST_ID = 'sat_domain_list'
-LIST_ITEM_FROM_CLASS = 'sat_domain_from'
-LIST_ITEM_TO_CLASS = 'sat_domain_to'
+LIST_ID = 'satDomainList'
+LIST_ITEM_ID = 'satDomainListItem'
+LIST_ITEM_SATNAME_CLASS = 'satDomainSATName'
+LIST_ITEM_BASENAME_CLASS = 'satDomainBaseName'
 
 START_HTML = '''
 <ul id="%s">
 ''' % LIST_ID
 
 ITEM_HTML = '''
-<li class='sat_domain_list_item'>
+<li class='%s'>
     <a href='https://{sat_name}'><span class="%s">{sat_name}</span></a>
     is a valid SAT domain for
     <a href='https://{trad_name}'><span class="%s">{trad_name}</span></a>
 </li>
-''' % (LIST_ITEM_FROM_CLASS, LIST_ITEM_TO_CLASS)
+''' % (LIST_ITEM_ID, LIST_ITEM_SATNAME_CLASS, LIST_ITEM_BASENAME_CLASS)
 
 END_HTML = '''
-</ul> <!-- sat_domain_list -->
-'''
+</ul> <!-- %s -->
+''' % LIST_ID
 
 
 def parse_domain_list_fd(fd):

@@ -6,6 +6,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## Unreleased
 
+### Changed
+
+- Make SAT list variables named `from` and `to` be more logical and
+  descriptive. No behavioral change unless I missed a spot and introduced a
+bug. (GH issue #5)
+
 ### Fixed
 
 - Disallow duplicate entries on personal SAT list. (GH issue #6)

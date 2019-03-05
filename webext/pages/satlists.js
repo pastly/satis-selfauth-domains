@@ -135,15 +135,15 @@ function addSATList(listObj) {
     let ul = doc.createElement("ul");
     for (map of listObj.list) {
         let li = doc.createElement("li");
-        let from_a = doc.createElement("a");
-        from_a.href = 'https://' + map.from;
-        from_a.appendChild(doc.createTextNode(map.from));
-        let to_a = doc.createElement("a");
-        to_a.href = 'https://' + map.to;
-        to_a.appendChild(doc.createTextNode(map.to));
-        li.appendChild(to_a);
+        let satName_a = doc.createElement("a");
+        satName_a.href = 'https://' + map.satName;
+        satName_a.appendChild(doc.createTextNode(map.satName));
+        let baseName_a = doc.createElement("a");
+        baseName_a.href = 'https://' + map.baseName;
+        baseName_a.appendChild(doc.createTextNode(map.baseName));
+        li.appendChild(baseName_a);
         li.appendChild(doc.createTextNode(" has SAT domain "));
-        li.appendChild(from_a);
+        li.appendChild(satName_a);
         ul.appendChild(li);
     }
     div_new.appendChild(ul);
@@ -201,18 +201,18 @@ function addPersonalSATList(listObj) {
     tab.appendChild(tr);
 
     for (item of listObj.list) {
-        let from_a = doc.createElement("a");
-        from_a.href = "https://" + item.from;
-        from_a.appendChild(doc.createTextNode(item.from));
-        let to_a = doc.createElement("a");
-        to_a.href = "https://" + item.to;
-        to_a.appendChild(doc.createTextNode(item.to));
+        let satName_a = doc.createElement("a");
+        satName_a.href = "https://" + item.satName;
+        satName_a.appendChild(doc.createTextNode(item.satName));
+        let baseName_a = doc.createElement("a");
+        baseName_a.href = "https://" + item.baseName;
+        baseName_a.appendChild(doc.createTextNode(item.baseName));
         tr = doc.createElement("tr");
         td = doc.createElement("td");
-        td.appendChild(to_a);
+        td.appendChild(baseName_a);
         tr.appendChild(td);
         td = doc.createElement("td");
-        td.appendChild(from_a);
+        td.appendChild(satName_a);
         tr.appendChild(td);
         tab.appendChild(tr);
 

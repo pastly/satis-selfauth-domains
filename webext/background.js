@@ -12,7 +12,7 @@ function satListsContaining(domain) {
             continue;
         }
         for (item of listObj.list) {
-            if (item.from == domain) {
+            if (item.satName == domain) {
                 out[hash] = listObj;
                 break;
             }
@@ -469,13 +469,13 @@ function findRewriteSATDomain(baseDomain) {
         if (!listObj.is_enabled || !listObj.do_rewrite) {
             continue;
         }
-        let match = listObj.list.find(function(i) {return i.to == baseDomain});
+        let match = listObj.list.find(function(i) {return i.baseName == baseDomain});
         if (!match) {
             continue;
         }
-        let satDomain = match.from;
+        let satDomain = match.satName;
         return satDomain;
-        let newUrl = url.href.replace(match.to, match.from);
+        let newUrl = url.href.replace(match.baseName, match.satName);
         return newUrl;
     }
     return null;
@@ -531,24 +531,24 @@ function onMessage_satDomainList(obj) {
     // like [56char]onion.example.com --> example.com
     let keepList = [];
     for (mapping of list) {
-        let from_name = mapping.from;
-        let to_name = mapping.to;
-        log_debug("Inspecting mapping from", from_name, "to", to_name);
-        if (!from_name.endsWith(to_name)) {
-            log_debug("Ignoring", from_name, "bc it doesn't end with", to_name);
+        let satName = mapping.satName;
+        let baseName = mapping.baseName;
+        log_debug("Inspecting mapping from", satName, "to", baseName);
+        if (!satName.endsWith(baseName)) {
+            log_debug("Ignoring", satName, "bc it doesn't end with", baseName);
             continue;
         }
-        let o = onion_v3extractFromPossibleSATDomain(from_name);
+        let o = onion_v3extractFromPossibleSATDomain(satName);
         if (!o) {
-            log_debug("Ignoring", from_name, "bc it isn't a SAT domain (1)");
+            log_debug("Ignoring", satName, "bc it isn't a SAT domain (1)");
             continue;
         }
         o = onion = new Onion(o);
         if (!o) {
-            log_debug("Ignoring", from_name, "bc it isn't a SAT domain (2)");
+            log_debug("Ignoring", satName, "bc it isn't a SAT domain (2)");
             continue;
         }
-        log_debug("Keeping", from_name, "to", to_name);
+        log_debug("Keeping", satName, "to", baseName);
         keepList.push(mapping);
     }
     list = keepList;
@@ -737,13 +737,13 @@ function onMessage_addPersonalSATListItem(msg) {
     };
     let listObj = d[hash];
     let matches = listObj.list.filter(function(i) {
-        return i.from == sat && i.to == base;
+        return i.satName == sat && i.baseName == base;
     });
     if (matches.length > 0) {
         log_debug("Already have this personal sat list entry. Ignoring");
         return;
     }
-    listObj.list.push({'from': sat, 'to': base});
+    listObj.list.push({'satName': sat, 'baseName': base});
     d[hash] = listObj;
     lsput("trustedSATLists", d);
     return;
@@ -757,7 +757,7 @@ function onMessage_deletePersonalSATListItem(msg) {
     };
     let listObj = d[hash];
     listObj.list = listObj.list.filter(function (i) {
-        return i.from != msg.item.from || i.to != msg.item.to;
+        return i.satName != msg.item.satName || i.baseName != msg.item.baseName;
     });
     d[hash] = listObj;
     lsput("trustedSATLists", d);

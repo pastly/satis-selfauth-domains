@@ -104,25 +104,25 @@ function sendMessage(id, msg) {
 }
 
 function findSATDomainList(doc) {
-    let list = doc.getElementById("sat_domain_list");
+    let list = doc.getElementById("satDomainList");
     if (!list) {
         log_debug("There is no domain list in this page");
         return;
     }
     let out = new Set();
     for (let li of list.children) {
-        let from_name = null;
-        let to_name = null;
+        let satName = null;
+        let baseName = null;
         for (ele of li.getElementsByTagName("span")) {
-            if (ele.classList.contains("sat_domain_from")) {
-                from_name = ele.textContent;
-            } else if (ele.classList.contains("sat_domain_to")) {
-                to_name = ele.textContent;
+            if (ele.classList.contains("satDomainSATName")) {
+                satName = ele.textContent;
+            } else if (ele.classList.contains("satDomainBaseName")) {
+                baseName = ele.textContent;
             }
         }
-        if (from_name && to_name) {
-            log_debug("Adding", from_name, "to", to_name);
-            out.add({'from': from_name, 'to': to_name});
+        if (satName && baseName) {
+            log_debug("Adding", satName, "to", baseName);
+            out.add({'satName': satName, 'baseName': baseName});
         } else {
             log_debug("Ignoring element:");
             log_object(ele);
