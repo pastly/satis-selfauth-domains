@@ -5,7 +5,7 @@ set -e
 ####################################
 cert_fname="/etc/letsencrypt/live/example.com/fullchain.pem"
 traditional_domain_name="example.com"
-torrc_tmpl_fname="torrc.tmpl"
+torrc_tmpl_fname="/root/satis/torrc.tmpl"
 torrc_out_fname="/home/satis/src/tor/example.com.torrc"
 reload_tor_command="cat /home/satis/src/tor/data/tor.pid | xargs kill -HUP"
 
