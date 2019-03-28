@@ -8,6 +8,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 Nothing
 
+## v1.3.2 - 2019-03-28
+
+### Fixed
+
+- Something changed underneath me, and now Firefox seems to preserve the
+  CaPiTaLiZaTiOn of header names instead of lowering them. We weren't finding
+the X-SAT-Sig header because we were looking for x-sat-sig. Fix this by
+.toLowerCase()-ing the header from Firefox.
+
 ## v1.3.1 - 2019-03-05
 
 ### Changed
