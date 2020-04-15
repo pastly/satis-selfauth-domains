@@ -55,7 +55,8 @@
                 "lib/log.js",
                 "lib/utils.js",
                 "content.js"
-            ]
+            ],
+            "run_at": "document_end"
         }
     ]
 }
