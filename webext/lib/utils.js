@@ -131,3 +131,25 @@ function findSATDomainList(doc) {
     return out;
 }
 
+function findSATSigInMetaTag(doc) {
+    let list = doc.getElementsByTagName("meta");
+    if (!list) {
+        log_debug("There is aren't any meta tag elements in this page");
+        return;
+    }
+    for (let li of list) {
+        if (li.hasAttribute("http-equiv") && li.hasAttribute("content")) {
+            let httpEquiv = li.getAttribute("http-equiv");
+            let content = li.getAttribute("content");
+            if (httpEquiv === "X-SAT-SIG") {
+                // First sig wins.
+                return content;
+            }
+        } else {
+            log_debug("Ignoring element:");
+            log_object(ele);
+        }
+    }
+    return out;
+}
+

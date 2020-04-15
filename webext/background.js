@@ -821,6 +821,15 @@ function onMessage_deletePersonalSATListItem(msg) {
     return true;
 }
 
+function onMessage_metaSatSignatureFound(msg) {
+    // Abuse the onHeaderReceived listener
+    let details = secInfoCache[msg.url];
+    if (!details) {
+        return;
+    }
+    return onHeadersReceived_verifySelfAuthConnection(details);
+}
+
 function onMessage(msg_obj, sender, responseFunc) {
     let id = msg_obj.id;
     let msg = msg_obj.msg;
@@ -852,6 +861,8 @@ function onMessage(msg_obj, sender, responseFunc) {
         responseFunc(onMessage_addPersonalSATListItem(msg));
     } else if (id == "deletePersonalSATListItem") {
         responseFunc(onMessage_deletePersonalSATListItem(msg));
+    } else if (id == "metaSatSignature") {
+        responseFunc(onMessage_metaSatSignatureFound(msg));
     } else {
         log_error("Got message id we don't know how to handle.",
             "Ignoring: ", id);
