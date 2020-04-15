@@ -121,7 +121,13 @@ class OnionSig {
     constructor(nacl, onion, base64Value) {
         let ED25519_SIG_LEN = 64;
         let MAGIC = "satis-guard-----";
-        let allAsBytes = window.atob(base64Value);
+        let allAsBytes;
+        try {
+            allAsBytes = window.atob(base64Value);
+        } catch (err) {
+            log_debug("Exception in atob(): ", err);
+            throw err;
+        }
         allAsBytes = byteStringToUint8Array(allAsBytes);
         let dataBytes = allAsBytes.slice(0, -ED25519_SIG_LEN);
         let sigBytes = allAsBytes.slice(-ED25519_SIG_LEN);

@@ -1,4 +1,5 @@
 var nacl = null;
+var try_fetch = true;
 
 const SAT_LIST_UPDATE_INTERVAL = 3600; // seconds
 const PERSONAL_LIST_HASH = sha3_256.create().update("personal").hex();
@@ -400,6 +401,7 @@ async function onHeadersReceived_verifySelfAuthConnection(details) {
         return generateRedirect_badSigEtc(sigHeader, url.hostname, fingerprint,
             err);
     }
+    log_debug("sigHeader: ", sigHeader);
     sigHeader = new OnionSig(nacl, onion, sigHeader);
 
     if (!sigHeader.validSig) {
@@ -482,6 +484,8 @@ function findRewriteSATDomain(baseDomain) {
 }
 
 function onBeforeRequest_rewriteSATDomains(details) {
+    log_debug("onBeforeRequest: requestId: ", details.requestId);
+    log_debug("onBeforeRequest: url: ", details.url);
     return new Promise((resolve, reject) => {
         try {
             let url = splitURL(details.url);
@@ -490,6 +494,51 @@ function onBeforeRequest_rewriteSATDomains(details) {
                 let newUrl = url.href.replace(url.hostname, satDomain);
                 resolve({"redirectUrl": newUrl});
             } else {
+                resolve({"cancel": false});
+            }
+        } catch (e) {
+            log_error(e);
+            reject(e);
+        }
+    });
+}
+
+function onBeforeRequest_cacheOnionAddressConnection(details) {
+    log_debug("onBeforeRequest: requestId: ", details.requestId);
+    log_debug("onBeforeRequest: url: ", details.url);
+    return new Promise((resolve, reject) => {
+        try {
+            let url = splitURL(details.url);
+
+            let onion = onion_v3extractFromPossibleSATDomain(url.hostname);
+            if (!onion) {
+                log_debug("Stopped considering", url.hostname, "because not",
+                    "a self-authenticating domain name");
+                resolve({"cancel": false});
+            } else if (`${onion}.onion` == onion_extractBaseDomain(url.hostname)) {
+                log_debug("Stopped considering", url.hostname, "because not",
+                    "a self-authenticating domain name - it's a raw onion address");
+                resolve({"cancel": false});
+            } else {
+                console.log(`onion: ${onion}`);
+
+                //if (!try_fetch) {
+                //    log_debug("We're looping.");
+                //    resolve({"cancel": true});
+                //}
+                fetch("https://www.sysrqb.xyz", {method: 'GET', credentials: 'omit'})
+                  .then((response) => {
+                    if (response.ok) {
+                      console.log(`Successful response from ${onion}`);
+                    } else {
+                      console.log(`Failure response from ${onion}`);
+                    }
+                  })
+                  .catch((error) => {
+                    console.log(`Exception thrown: ${error}`);
+                  });
+                try_fetch = false;
+
                 resolve({"cancel": false});
             }
         } catch (e) {
@@ -822,6 +871,11 @@ function addEventListeners() {
         {urls: ["<all_urls>"]},
         ["blocking"]
     );
+    //browser.webRequest.onBeforeRequest.addListener(
+    //    onBeforeRequest_cacheOnionAddressConnection,
+    //    {urls: ["<all_urls>"]},
+    //    ["blocking"]
+    //);
 }
 
 function updateSATList(hash) {
