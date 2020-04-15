@@ -1,6 +1,8 @@
 var nacl = null;
 var try_fetch = true;
 
+var secInfoCache = {}
+
 const SAT_LIST_UPDATE_INTERVAL = 3600; // seconds
 const PERSONAL_LIST_HASH = sha3_256.create().update("personal").hex();
 
@@ -464,6 +466,12 @@ function onHeadersReceived_allowAttestedSATDomainsOnly(details) {
 
 }
 
+function onHeadersReceived_cacheSecurityInfo(details) {
+    let url = details.documentUrl
+    secInfoCache[url] = details
+    secInfoCache[url].secInfo = await tryGetSecurityInfo(details.requestId);
+}
+
 function findRewriteSATDomain(baseDomain) {
     let d = lsget("trustedSATLists") || {};
     for (h in d) {
@@ -863,6 +871,11 @@ function addEventListeners() {
     );
     browser.webRequest.onHeadersReceived.addListener(
         onHeadersReceived_allowAttestedSATDomainsOnly,
+        {urls: ["<all_urls>"]},
+        ["blocking", "responseHeaders"]
+    );
+    browser.webRequest.onHeadersReceived.addListener(
+        onHeadersReceived_cacheSecurityInfo,
         {urls: ["<all_urls>"]},
         ["blocking", "responseHeaders"]
     );
