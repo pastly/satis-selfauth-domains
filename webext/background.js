@@ -363,6 +363,13 @@ async function onHeadersReceived_verifySelfAuthConnection(details) {
         return;
     }
 
+    let onion = onion_v3extractFromPossibleSATUrl(url);
+    if (!onion) {
+        log_debug("Stopped considering", url.hostname, "because not",
+            "a self-authenticating domain name");
+        return;
+    }
+
     let onion = onion_v3extractFromPossibleSATDomain(url.hostname);
     if (!onion) {
         log_debug("Stopped considering", url.hostname, "because not",

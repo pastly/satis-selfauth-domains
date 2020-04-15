@@ -82,6 +82,45 @@ function onion_v3extractFromPossibleSATDomain(domain) {
 }
 
 /**
+ * Given a URL including query strings, extract the onion address from it.
+ *
+ * Returns [56chars] from domains like [56chars]onion.foo.com, otherwise
+ * returns null.
+ */
+function onion_v3extractFromPossibleSATUrl(url) {
+    if (url.search === "") {
+        return null;
+    }
+
+    if (url.search[0] !== "?") {
+        return null;
+    }
+
+    const search = url.search.substring(1);
+    if (search.length === 0) {
+        return null;
+    }
+
+    const queries = search.split("&");
+    for (let query of queries) {
+        const kv = query.split("=");
+        if (kv.length !== 2) {
+            continue;
+        }
+        if (kv[0] !== "onion") {
+            continue;
+        }
+        const onion = kv[1];
+        if (!onion_v3valid(onion)) {
+            continue;
+        }
+        return onion;
+    }
+
+    return null;
+}
+
+/**
  * Given a domain name, extract the onion address (without the ".onion" suffix)
  * from it. Otherwise return null.
  *
