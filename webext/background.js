@@ -2,6 +2,7 @@ var nacl = null;
 var try_fetch = true;
 
 var secInfoCache = {}
+var waitingForMetaTag = {}
 
 const SAT_LIST_UPDATE_INTERVAL = 3600; // seconds
 const PERSONAL_LIST_HASH = sha3_256.create().update("personal").hex();
@@ -406,9 +407,19 @@ async function onHeadersReceived_verifySelfAuthConnection(details) {
 
     sigHeader = getOnionSigHeader(responseHeaders);
     if (!sigHeader) {
-        err = "The webserver didn't provide an onion sig header";
-        return generateRedirect_badSigEtc(sigHeader, url.hostname, fingerprint,
-            err);
+        if (details.satSig) {
+            sigHeader = details.satSig;
+        } else {
+            err = "The webserver didn't provide an onion sig header";
+            if (details.url in waitingForMetaTag && waitingForMetaTag[details.url]) {
+                delete waitingForMetaTag[details.url];
+                return generateRedirect_badSigEtc(sigHeader, url.hostname, fingerprint,
+                    err);
+            } else {
+                waitingForMetaTag[details.url] = true;
+                return;
+            }
+        }
     }
     log_debug("sigHeader: ", sigHeader);
     sigHeader = new OnionSig(nacl, onion, sigHeader);
