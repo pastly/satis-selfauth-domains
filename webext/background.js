@@ -364,19 +364,19 @@ async function onHeadersReceived_verifySelfAuthConnection(details) {
         return;
     }
 
+    let isSatDomain = false;
     let onion = onion_v3extractFromPossibleSATUrl(url);
     if (!onion) {
-        log_debug("Stopped considering", url.hostname, "because not",
-            "a self-authenticating domain name");
-        return;
+        log_debug(`Self-authenticating url not found in ${url}`);
+        onion = onion_v3extractFromPossibleSATDomain(url.hostname);
+        if (!onion) {
+            log_debug("Stopped considering", url.hostname, "because not",
+                "a self-authenticating domain name");
+            return;
+        }
+        isSatDomain = true;
     }
 
-    let onion = onion_v3extractFromPossibleSATDomain(url.hostname);
-    if (!onion) {
-        log_debug("Stopped considering", url.hostname, "because not",
-            "a self-authenticating domain name");
-        return;
-    }
 
     /*
      * At this point, we are visiting a satis domain name, but we known
@@ -393,8 +393,12 @@ async function onHeadersReceived_verifySelfAuthConnection(details) {
     let sigHeader = null;
     let err = null;
 
+    let hostname = url.hostname;
+    if (!isSatDomain) {
+        hostname = `${onion}onion.${hostname}`;
+    }
     let rightNames = certContainsProperNames(
-        url.hostname, subject, subjectAlts);
+        hostname, subject, subjectAlts);
     if (!rightNames) {
         err = "The TLS certificate doesn't have the proper " +
             "domains in the right places";
@@ -436,7 +440,7 @@ async function onHeadersReceived_verifySelfAuthConnection(details) {
     } else if (fingerprint != sigHeader.fingerprint) {
         err = "The fingerprint in the TLS cert doesn't match the " +
             "one in the SAT HTTP header.";
-    } else if (url.hostname != sigHeader.domain) {
+    } else if (url.hostname != sigHeader.domain && hostname != sigHeader.domain) {
         err = "The domain in the SAT HTTP header is not the " +
             "one we are visiting.";
     } else if (!sigHeader.validSig) {
@@ -458,12 +462,17 @@ function onHeadersReceived_allowAttestedSATDomainsOnly(details) {
     let url = splitURL(details.url);
     // When the user visits a non-SAT domain, do nothing special. This only
     // ever applies to SAT domains.
-    let onion = onion_v3extractFromPossibleSATDomain(url.hostname);
+    let onion = onion_v3extractFromPossibleSATUrl(url);
     if (!onion) {
-        log_debug("Stopped considering", url.hostname, "because not",
-            "a self-authenticating domain name");
-        return;
+        log_debug(`Self-authenticating url not found in ${url}`);
+        onion = onion_v3extractFromPossibleSATDomain(url.hostname);
+        if (!onion) {
+            log_debug("Stopped considering", url.hostname, "because not",
+                "a self-authenticating domain name");
+            return;
+        }
     }
+
     // The option is enabled if we've gotten here, and we are visiting a SAT
     // domain. The user only wants to visit a SAT domain if it is attested for
     // on a list of theirs.  All this function needs to do is make sure the
@@ -588,13 +597,17 @@ function onMessage_satDomainList(obj) {
     log_debug("Found set of SAT domain mappings from", url.hostname);
     
     // Make sure we are visiting a SAT domain
-    let onion = onion_v3extractFromPossibleSATDomain(url.hostname);
+    let onion = onion_v3extractFromPossibleSATUrl(url);
     if (!onion) {
-        log_debug("We are not currently visiting a SAT domain, so "+
-            "ignoring mappings");
-        return;
+        log_debug(`Self-authenticating url not found in ${url}`);
+        onion = onion_v3extractFromPossibleSATDomain(url.hostname);
+        if (!onion) {
+            log_debug("We are not currently visiting a SAT domain, so "+
+                "ignoring mappings");
+            return;
+        }
     }
-    let baseDomain = onion_extractBaseDomain(url.hostname);
+
     onion = new Onion(onion);
     if (!onion) {
         log_debug("The domain looks like a SAT domain, but didn't parse "+
