@@ -200,7 +200,8 @@ function _extractOnionSigForPossibleSATAltSvc(as, headers, origin, secInfo) {
             "the alt-svc header to the user. (",
             onionSig.domain, "vs", as.domain, ")");
         return false;
-    } else if (isOnionDomain && onion.str + "onion." + origin != onionSig.domain) {
+    } else if (isOnionDomain &&
+               (origin != onionSig.domain && onion.str + "onion." + origin != onionSig.domain)) {
         log_debug("The onion sig header contains", onionSig.domain,
             "but we are looking for", onion.str + "onion." + origin,
             "so we are not giving it to the user.");
@@ -782,7 +783,7 @@ function onMessage_satDomainList(obj) {
         }
         trustedSATLists[hash] = new SATList(
             updateUrl, list, false, false, false, null,
-            onion_extractBaseDomain(hostname), wellknown);
+            onion_extractBaseDomain(hostname), wellknown, satUrl);
         lsput("trustedSATLists", trustedSATLists);
         setTimeout(updateSATList, SAT_LIST_UPDATE_INTERVAL * 1000, hash);
         return "Thanks (used)";
@@ -982,12 +983,14 @@ function onMessage_deletePersonalSATListItem(msg) {
     return true;
 }
 
-function onMessage_metaSatSignatureFound(msg) {
+async function onMessage_metaSatSignatureFound(msg) {
     // Abuse the onHeaderReceived listener
     let details = secInfoCache[msg.url];
     if (!details) {
+        log_debug("Cached SecInfo not found");
         return;
     }
+    details.satSig = msg.satSig;
     return onHeadersReceived_verifySelfAuthConnection(details);
 }
 
