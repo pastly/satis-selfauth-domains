@@ -141,15 +141,15 @@ function findSATSigInMetaTag(doc) {
         if (li.hasAttribute("http-equiv") && li.hasAttribute("content")) {
             let httpEquiv = li.getAttribute("http-equiv");
             let content = li.getAttribute("content");
-            if (httpEquiv === "X-SAT-SIG") {
+            if (httpEquiv.toLowerCase() === "x-sat-sig") {
                 // First sig wins.
                 return content;
             }
         } else {
             log_debug("Ignoring element:");
-            log_object(ele);
+            log_object(li);
         }
     }
-    return out;
+    return;
 }
 
