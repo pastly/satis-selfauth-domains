@@ -215,8 +215,8 @@ function onionSigValidInTime(onionSig, secInfo) {
     let now = Date.now() / 1000;
     if (secInfo != null) {
         let certValidity = getValidity(secInfo);
-        let certStart = Date.parse(certValidity.startGMT) / 1000;
-        let certEnd = Date.parse(certValidity.endGMT) / 1000;
+        let certStart = certValidity.start / 1000;
+        let certEnd = certValidity.end / 1000;
         if (sigStart < certStart) {
             // If the signature claims to be valid before the beginning of the
             // certificate's validity, don't let it be
