@@ -25,6 +25,14 @@ function getOnionSigHeaders(headers) {
     return _getHeaders(headers, "X-SAT-Sig");
 }
 
+function getSatTokenHeader(headers) {
+    return _getHeader(headers, "SAT-TOKEN");
+}
+
+function getSatTokenHeaders(headers) {
+    return _getHeaders(headers, "SAT-TOKEN");
+}
+
 function getAltSvcHeaders(headers) {
     return _getHeaders(headers, "Alt-Svc");
 }

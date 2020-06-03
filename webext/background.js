@@ -493,15 +493,119 @@ function onHeadersReceived_allowAttestedSATDomainsOnly(details) {
     // checks to make sure the onion sig is present and checks out with the TLS
     // certificate.
     //
-    // If there's zero list hashes in the returned object, the for loop won't
-    // be called and we will return false
+    // If there's zero list hashes in the returned object, then we will look for
+    // a credential in the HTTP headers.
     let lists = satListsContaining(url.hostname);
-    for (hash in lists) {
+    if (hash in lists) {
         log_debug("So far we are allowing", url.hostname, "because it",
             "appears in list", lists[hash].name);
         return;
     }
+
+    let b64TokenHeaders = getSatTokenHeaders(details.responseHeaders);
+    for (let b64TokenHeader of b64TokenHeaders) {
+        try {
+            tokenHeaderAsBytes = window.atob(b64TokenHeader);
+        } catch (err) {
+            log_debug("Exception in atob(): ", err);
+            continue;
+        }
+        let lightlyParsed = lightlyParseSatJSON(tokenHeaderAsBytes);
+        let taggedUnparsedContent = "sattestation-list-v0" + lightlyParsed.unparsedContent;
+
+        let sigDecode = "";
+        try {
+          sigDecode = window.atob(lightlyParsed.sig);
+        } catch (err) {
+          log_debug("Exception in atob(): ", err);
+          return;
+        }
+
+        if (sigDecode.length !== 64) {
+          log_debug(`Signature is an incorrect length: ${sigDecode.length}`);
+          return;
+        }
+
+        // Binary string to array of u8
+        let sigAsBytes = byteStringToUint8Array(sigDecode);
+        let contentAsBytes = byteStringToUint8Array(taggedUnparsedContent);
+
+        let parsedContent;
+        let trustedSatList = getTrustedSatLists();
+        for (let sat in trustedSatList) {
+            log_debug(`Validating credential using ${sat.name}`);
+            if (sat.list.length === 0) {
+                continue;
+            }
+            let satName = sat.list[0].satName;
+            let o = onion_v3extractFromPossibleSATDomain(satName);
+            if (!o) {
+                log_debug(`${satName} is not a sata`);
+                continue;
+            }
+            let onion = new Onion(o);
+            if (!o) {
+                log_debug(`${satName} does not start with a valid onion address`);
+                continue;
+            }
+            parsedContent = validateAndParseJson(contentAsBytes, taggedUnparsedContent, sigAsBytes, onion);
+            if (parsedContent) {
+                log_debug(`${satName} validates credential`);
+                break;
+            }
+
+            log_debug(`${satName} does not validate credential`);
+        }
+
+        if (parsedContent) {
+            let expectedTokenProperties = ["sat_list_version", "sattestor",
+                "sattestor_onion", "sattestor_labels", "sattestee", "sattestee_onion",
+                "sattestee_labels", "valid_after"];
+            let badProp = false;
+            for (let prop of expectedTokenProperties) {
+                if (! prop in parsedContent) {
+                    log_debug(`Token missing ${prop}. Malformed.`);
+                    badProp = true;
+                    break;
+                }
+            }
+
+            if (badProp) {
+                continue;
+            }
+
+            if (parsedContent.sat_list_version !== 1) {
+                log_debug("Token version is not 1.");
+                continue;
+            }
+
+            if (parsedContent.sattestee != url.hostname) {
+                log_debug(`Token sattestee (${parsedContent.sattestee}) is not this site.`);
+                continue;
+            }
+
+            let validAfter = Date.parse(parsedContent.valid_after);
+            let secondsValid = Date.now() - validAfter;
+            // Roughly, within a few days.
+            let threeMonths = 60*60*24*30*3;
+
+            if (secondValid < 0) {
+                log_debug(`Token valid_after (${parsedContent.valid_after}) is yet valid.`);
+                continue;
+            }
+
+            if (validSeconds > threeMonths) {
+                log_debug(`Token valid_after (${parsedContent.valid_after}) is expired.`);
+                continue;
+            }
+
+            log_debug("Provided token is valid");
+            return;
+        }
+    }
+
     log_debug(url.hostname, "is not on any trusted SAT list so disallowing");
+
     return generateRedirect_notOnTrustedSATList(url.hostname);
 
 }

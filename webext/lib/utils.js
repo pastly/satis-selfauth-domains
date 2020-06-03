@@ -217,7 +217,6 @@ function fetchSATDomainList(win) {
 function lightlyParseSatJSON(content) {
     let trimmedContent = content.trim();
     const sattestationPropRe = /^{\s*"sattestation"\s*:\s*/;
-    //if (!content.startsWith(sattestationProp)) {
     let satArr = trimmedContent.split(sattestationPropRe);
     if (satArr.length !== 2) {
         log_debug("Text doesn't start with sattestation property.");
@@ -225,23 +224,22 @@ function lightlyParseSatJSON(content) {
     }
     let satIdx = content.indexOf(satArr[1]);
 
-    const sigPropRe = /"sig"\s*:\s*"[a-zA-Z0-9/=]*"\s*}$/;
-    //let startOfSigObject = content.lastIndexOf("sig:");
+    const sigPropRe = /"signature"\s*:\s*"[a-zA-Z0-9/=]*"\s*}$/;
     let startOfSigObject = trimmedContent.search(sigPropRe);
     if (startOfSigObject === -1) {
         log_debug("Text doesn't end with the signature property.");
         return;
     }
 
-    // sig: <base64 encoded sig>
+    // signature: <base64 encoded sig>
     let sigKV = trimmedContent.substring(startOfSigObject, trimmedContent.length - "}".length);
     let sigKVArr = sigKV.split(":");
-    if (!sigKVArr[0].startsWith("\"sig\"") || sigKVArr.length !== 2) {
+    if (!sigKVArr[0].startsWith("\"signature\"") || sigKVArr.length !== 2) {
         log_debug("Sig property is malformed (1).");
         return;
     }
     let sigKey = sigKVArr[0].trim();
-    if (sigKey !== "\"sig\"") {
+    if (sigKey !== "\"signature\"") {
         log_debug("Signature property is not exactly 'signature'.");
         return;
     }
@@ -361,8 +359,20 @@ function validateAndParseSattestation(msg) {
     let sigAsBytes = byteStringToUint8Array(sigDecode);
     let contentAsBytes = byteStringToUint8Array(taggedUnparsedContent);
 
+    parsedContent = validateAndParseJson(lightlyParsed.unparsedContent, contentAsBytes, sigAsBytes, onion);
+    if (!parsedContent) {
+        return;
+    }
+
+    parsedContent.url = url;
+    parsedContent.isSatUrl = isSatUrl;
+
+    return parsedContent;
+}
+
+function validateAndParseJson(unparsedMsg, signedMsg, sig, onion) {
     let validSig = nacl.crypto_sign_verify_detached(
-        sigAsBytes, contentAsBytes, onion.pubkey);
+        sig, signedMsg, onion.pubkey);
 
     if (!validSig) {
         log_debug("Signature not valid for content in sattestation");
@@ -371,14 +381,10 @@ function validateAndParseSattestation(msg) {
 
     let parsedContent = "";
     try {
-        parsedContent = JSON.parse(lightlyParsed.unparsedContent);
+        parsedContent = JSON.parse(unparsedMsg);
     } catch (e) {
         log_error(e);
         return;
     }
-
-    parsedContent.url = url;
-    parsedContent.isSatUrl = isSatUrl;
-
     return parsedContent;
 }
