@@ -493,8 +493,8 @@ function onHeadersReceived_allowAttestedSATDomainsOnly(details) {
 
 }
 
-function onHeadersReceived_cacheSecurityInfo(details) {
-    let url = details.documentUrl
+async function onHeadersReceived_cacheSecurityInfo(details) {
+    let url = details.url
     secInfoCache[url] = details
     secInfoCache[url].secInfo = await tryGetSecurityInfo(details.requestId);
 }
