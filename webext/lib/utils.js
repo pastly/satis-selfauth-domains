@@ -106,7 +106,7 @@ function sendMessage(id, msg) {
 function findSATDomainList(doc) {
     let list = doc.getElementById("satDomainList");
     if (!list) {
-        log_debug("There is no domain list in this page");
+        log_debug("There is no domain list in this page.");
         return;
     }
     let out = new Set();
@@ -131,6 +131,148 @@ function findSATDomainList(doc) {
     return out;
 }
 
+function handleSattestations(sat) {
+    if (! "sattestor" in sat) {
+        log_debug("msg does not contain sattestor");
+        return;
+    }
+    if (! "sattestor_onion" in sat) {
+        log_debug("msg does not contain onion");
+        return;
+    }
+    if (! "sattestor_labels" in sat) {
+        log_debug("msg does not contain labels");
+        return;
+    }
+    if (! "url" in sat) {
+        log_debug("msg does not contain url");
+        return;
+    }
+    if (! "isSatUrl" in sat) {
+        log_debug("msg does not contain isSatUrl");
+        return;
+    }
+
+    let out = new Set();
+
+    let satName, baseName;
+    if (sat.isSatUrl) {
+        satName = sat.sattestor_onion + "onion." + sat.sattestor;
+        baseName = sat.sattestor;
+    } else {
+        satName = sat.sattestor;
+        baseName = onion_extractBaseDomain(sat.sattestor);
+    }
+
+    out.add({'satName': satName, 'baseName': baseName});
+
+    if ("sattestees" in sat) {
+        for (let sattestee of sat.sattestees) {
+            if (! "sattestee" in sattestee) {
+                log_debug(`sattestee does not contain sattestee: ${sattestee}`);
+                continue;
+            }
+            if (! "onion" in sattestee) {
+                log_debug(`sattestee does not contain onion: ${sattestee}`);
+                continue;
+            }
+            if (! "labels" in sattestee) {
+                log_debug(`sattestee does not contain labels: ${sattestee}`);
+                continue;
+            }
+            // TODO Add labels and valid_after
+            out.add({'satName': sattestee.onion + "onion." + sattestee.sattestee, 'baseName': sattestee.sattestee});
+        }
+    } else {
+        log_debug("msg does not contain sattestees");
+    }
+
+    return {"url": sat.url, "set": out, "wellknown": true, "satUrl": sat.isSatUrl};
+}
+
+function sendSATDomainListRequest(resp) {
+    const wellKnownResource = resp.origin + "/.well-known/sattestation.json?onion=" + resp.onion;
+    log_debug("Fetching well-known sat ", wellKnownResource);
+    var xmlHttp = new XMLHttpRequest();
+    xmlHttp.onreadystatechange = function() {
+        if (xmlHttp.readyState == 4 && xmlHttp.status == 200) {
+            log_debug(`Received responseText: ${xmlHttp.responseText}`);
+            sendMessage("validateParseSattestation", { 'response': xmlHttp.responseText, 'url': document.URL });
+        } else {
+            log_debug(`Fetching well-known sat returned ${xmlHttp.status}, readystate ${xmlHttp.readyState}`);
+        }
+    }
+    log_object(wellKnownResource);
+    //xmlHttp.responseType = 'json';
+    xmlHttp.open("GET", wellKnownResource, true);
+    xmlHttp.send();
+}
+
+function fetchSATDomainList(win) {
+    log_debug("Starting process for fetching sattestations from " + window.origin + " (" + window.document.URL + ")");
+    let response = sendMessage("parseUrl", {'origin': window.origin, 'url': window.document.URL });
+    response.then(sendSATDomainListRequest);
+}
+
+function lightlyParseSatJSON(content) {
+    let trimmedContent = content.trim();
+    const sattestationPropRe = /^{\s*"sattestation"\s*:\s*/;
+    //if (!content.startsWith(sattestationProp)) {
+    let satArr = trimmedContent.split(sattestationPropRe);
+    if (satArr.length !== 2) {
+        log_debug("Text doesn't start with sattestation property.");
+        return;
+    }
+    let satIdx = content.indexOf(satArr[1]);
+
+    const sigPropRe = /"sig"\s*:\s*"[a-zA-Z0-9/=]*"\s*}$/;
+    //let startOfSigObject = content.lastIndexOf("sig:");
+    let startOfSigObject = trimmedContent.search(sigPropRe);
+    if (startOfSigObject === -1) {
+        log_debug("Text doesn't end with the signature property.");
+        return;
+    }
+
+    // sig: <base64 encoded sig>
+    let sigKV = trimmedContent.substring(startOfSigObject, trimmedContent.length - "}".length);
+    let sigKVArr = sigKV.split(":");
+    if (!sigKVArr[0].startsWith("\"sig\"") || sigKVArr.length !== 2) {
+        log_debug("Sig property is malformed (1).");
+        return;
+    }
+    let sigKey = sigKVArr[0].trim();
+    if (sigKey !== "\"sig\"") {
+        log_debug("Signature property is not exactly 'signature'.");
+        return;
+    }
+    let sig = sigKVArr[1].trim();
+    // Strip quote at beginning and end of string
+    if (sig.charAt(0) !== "\"") {
+        log_debug("Signature does not begin with a quote.");
+        return;
+    }
+    if (sig.charAt(sig.length - 1) !== "\"") {
+        log_debug("Signature does not end with a quote.");
+        return;
+    }
+    sig = sig.substring(1, sig.length - 1);
+
+    let unparsedSat = satArr[1].substring(0, startOfSigObject - satIdx - 1);
+    if (unparsedSat === 0) {
+        log_debug("There is no sattestation in this document.");
+        return;
+    }
+
+    let lastComma = unparsedSat.lastIndexOf(',');
+    if (lastComma === -1) {
+        log_debug("Last comma (before sig) not found.");
+        return;
+    }
+    unparsedSat = unparsedSat.substring(0, lastComma);
+
+    return {'sig': sig, 'unparsedContent': unparsedSat};
+}
+
 function findSATSigInMetaTag(doc) {
     let list = doc.getElementsByTagName("meta");
     if (!list) {
@@ -153,3 +295,90 @@ function findSATSigInMetaTag(doc) {
     return;
 }
 
+function validateAndParseSattestation(msg) {
+    if (! "response" in msg) {
+        log_debug("msg does not contain unparsedContent");
+        return;
+    }
+    let lightlyParsed = lightlyParseSatJSON(msg.response);
+
+    if (!lightlyParsed) {
+        log_debug("Lightly parsing JSON failed.");
+        return;
+    }
+
+    if (! "sig" in lightlyParsed) {
+        log_debug("msg does not contain sig");
+        return;
+    }
+    if (!log_assert(nacl != null, "NaCl wasn't initialized in time")) {
+        return;
+    }
+    let details = secInfoCache[msg.url];
+    if (!details) {
+        log_debug("Cached SecInfo not found");
+        return;
+    }
+    let url = splitURL(msg.url);
+
+    let isSatUrl = true;
+    let onion = onion_v3extractFromPossibleSATUrl(url);
+    if (!onion) {
+        log_debug(`Self-authenticating url not found in ${url}`);
+        onion = onion_v3extractFromPossibleSATDomain(url.hostname);
+        if (!onion) {
+            log_debug("Stopped considering", url.hostname, "because not",
+                "a self-authenticating domain name");
+            return;
+        } else {
+            log_debug(`Self-authenticating domain found in ${url.hostname}`);
+            isSatUrl = false;
+        }
+    } else {
+        log_debug(`Self-authenticating url found in ${url}`);
+    }
+
+    onion = new Onion(onion);
+
+    let taggedUnparsedContent = "sattestation-list-v0 " + lightlyParsed.unparsedContent;
+    log_debug(`Verifying tagged message: '${taggedUnparsedContent}'`);
+
+    // Base64-encoded string to binary string
+    let sigDecode = "";
+    try {
+      sigDecode = window.atob(lightlyParsed.sig);
+    } catch (err) {
+      log_debug("Exception in atob(): ", err);
+      return;
+    }
+
+    if (sigDecode.length !== 64) {
+      log_debug(`Signature is an incorrect length: ${sigDecode.length}`);
+      return;
+    }
+
+    // Binary string to array of u8
+    let sigAsBytes = byteStringToUint8Array(sigDecode);
+    let contentAsBytes = byteStringToUint8Array(taggedUnparsedContent);
+
+    let validSig = nacl.crypto_sign_verify_detached(
+        sigAsBytes, contentAsBytes, onion.pubkey);
+
+    if (!validSig) {
+        log_debug("Signature not valid for content in sattestation");
+        return;
+    }
+
+    let parsedContent = "";
+    try {
+        parsedContent = JSON.parse(lightlyParsed.unparsedContent);
+    } catch (e) {
+        log_error(e);
+        return;
+    }
+
+    parsedContent.url = url;
+    parsedContent.isSatUrl = isSatUrl;
+
+    return parsedContent;
+}
