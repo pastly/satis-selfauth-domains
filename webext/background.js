@@ -106,6 +106,7 @@ function generateRedirect_notOnTrustedSATList(urlHostname) {
     let pageURL = browser.extension.getURL("pages/notOnTrustedSATList.html");
     pageURL = addParam(pageURL, "domain", urlHostname);
     return { "redirectUrl": pageURL };
+}
 
 function generateRedirect_nullSetAttestedLabel(urlHostname, selfLabels, satLabels, errorMessage) {
     let pageURL = browser.extension.getURL("pages/notOnTrustedSATList.html");
