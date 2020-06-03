@@ -25,8 +25,9 @@ function main() {
     }
     let response = sendMessage(
         "satDomainList", {
-            "url": document.URL, "set": set });
+            "url": document.URL, "set": set, "wellknown": false, "satUrl": false });
     response.then(log_success_from_bg, log_error_from_bg);
+    fetchSATDomainList(window);
 }
 
 main();

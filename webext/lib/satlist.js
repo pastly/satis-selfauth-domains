@@ -1,5 +1,5 @@
 class SATList {
-    constructor(updateURL, list, trusted, enabled, rewrite, lastUpdate, name) {
+    constructor(updateURL, list, trusted, enabled, rewrite, lastUpdate, name, wellknown, satUrl) {
         let hash = sha3_256.create().update(updateURL).hex();
         this.lastUpdate = // an int and measured in seconds
             (lastUpdate ? lastUpdate : Math.floor(Date.now() / 1000));
@@ -11,5 +11,7 @@ class SATList {
         this.is_enabled = enabled;
         this.do_rewrite = rewrite;
         this.is_personal = false;
+        this.wellknown = wellknown;
+        this.satUrl = satUrl;
     }
 }

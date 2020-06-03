@@ -84,20 +84,23 @@ function onion_v3extractFromPossibleSATDomain(domain) {
 /**
  * Given a URL including query strings, extract the onion address from it.
  *
- * Returns [56chars] from domains like [56chars]onion.foo.com, otherwise
+ * Returns [56chars] from domains like foo.com?onion=[56chars], otherwise
  * returns null.
  */
 function onion_v3extractFromPossibleSATUrl(url) {
     if (url.search === "") {
+        log_debug("search is empty");
         return null;
     }
 
     if (url.search[0] !== "?") {
+        log_debug("search doesn't begin with '?'");
         return null;
     }
 
     const search = url.search.substring(1);
     if (search.length === 0) {
+        log_debug("search was only '?'");
         return null;
     }
 
@@ -116,6 +119,7 @@ function onion_v3extractFromPossibleSATUrl(url) {
         }
         return onion;
     }
+    log_debug("onion key not found");
 
     return null;
 }

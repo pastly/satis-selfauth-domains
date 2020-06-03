@@ -7,6 +7,19 @@ var waitingForMetaTag = {}
 const SAT_LIST_UPDATE_INTERVAL = 3600; // seconds
 const PERSONAL_LIST_HASH = sha3_256.create().update("personal").hex();
 
+function getTrustedSatLists() {
+    let d = lsget("trustedSATLists") || {};
+    let out = {};
+    for (hash in d) {
+        let listObj = d[hash];
+        if (!listObj.is_trusted || !listObj.is_enabled) {
+            continue;
+        }
+        out[hash] = listObj;
+    }
+    return out;
+}
+
 function satListsContaining(domain) {
     let d = lsget("trustedSATLists") || {};
     let out = {};
@@ -594,8 +607,11 @@ function onMessage_giveAltSvcs(origin) {
 function onMessage_satDomainList(obj) {
     let url = splitURL(obj.url);
     let list = Array.from(obj.set);
+    let wellknown = obj.wellknown;
+    let satUrl = obj.satUrl;
+    let hostname = url.hostname;
     log_debug("Found set of SAT domain mappings from", url.hostname);
-    
+
     // Make sure we are visiting a SAT domain
     let onion = onion_v3extractFromPossibleSATUrl(url);
     if (!onion) {
@@ -606,6 +622,9 @@ function onMessage_satDomainList(obj) {
                 "ignoring mappings");
             return;
         }
+    } else {
+        // Use canonical subdomain
+        hostname = `${onion}onion.${hostname}`;
     }
 
     onion = new Onion(onion);
@@ -647,12 +666,19 @@ function onMessage_satDomainList(obj) {
 
     // Add it to the trusted storage if necessary
     let trustedSATLists = lsget("trustedSATLists") || {};
-    let hash = sha3_256.create().update(url.href).hex();
+    let hash = sha3_256.create().update(hostname).hex();
     if (!(hash in trustedSATLists)) {
-        log_debug("Adding", url, "to trusted SAT lists");
+        log_debug("Adding", hostname, "to trusted SAT lists");
+        let updateUrl = hostname;
+        if (wellknown) {
+            updateUrl = updateUrl + "/.well-known/sattestation.json";
+        }
+        if (satUrl) {
+            updateUrl = updateUrl + "?onion=" + onion.onion;
+        }
         trustedSATLists[hash] = new SATList(
-            obj.url, list, false, false, false, null,
-            onion_extractBaseDomain(url.hostname));
+            updateUrl, list, false, false, false, null,
+            onion_extractBaseDomain(hostname), wellknown);
         lsput("trustedSATLists", trustedSATLists);
         setTimeout(updateSATList, SAT_LIST_UPDATE_INTERVAL * 1000, hash);
         return "Thanks (used)";
@@ -861,6 +887,36 @@ function onMessage_metaSatSignatureFound(msg) {
     return onHeadersReceived_verifySelfAuthConnection(details);
 }
 
+async function onMessage_validateParseSattestation(msg) {
+    let parsed = validateAndParseSattestation(msg);
+    if (!parsed) {
+        return;
+    }
+    let satSet = handleSattestations(parsed);
+    if (!satSet) {
+        return;
+    }
+    log_debug(onMessage_satDomainList(satSet));
+}
+
+async function onMessage_parseUrl(msg) {
+    log_debug("in parseUrl: " + msg);
+    let url = splitURL(msg.url);
+    let onion = onion_v3extractFromPossibleSATUrl(url);
+    if (!onion) {
+        log_debug(`Self-authenticating url not found in ${url}`);
+        onion = onion_v3extractFromPossibleSATDomain(url.hostname);
+        if (!onion) {
+            log_debug("Stopped considering", url.hostname, "because not",
+                "a self-authenticating domain name");
+            return;
+        }
+    }
+
+    msg.onion = onion;
+    return msg;
+}
+
 function onMessage(msg_obj, sender, responseFunc) {
     let id = msg_obj.id;
     let msg = msg_obj.msg;
@@ -894,6 +950,10 @@ function onMessage(msg_obj, sender, responseFunc) {
         responseFunc(onMessage_deletePersonalSATListItem(msg));
     } else if (id == "metaSatSignature") {
         responseFunc(onMessage_metaSatSignatureFound(msg));
+    } else if (id == "validateParseSattestation") {
+        responseFunc(onMessage_validateParseSattestation(msg));
+    } else if (id == "parseUrl") {
+        responseFunc(onMessage_parseUrl(msg));
     } else {
         log_error("Got message id we don't know how to handle.",
             "Ignoring: ", id);
@@ -943,7 +1003,7 @@ function updateSATList(hash) {
 
     let listObj = d[hash];
     if (!log_assert(
-            !libObj.is_personal,
+            !listObj.is_personal,
             "Refusing to attempt update of personal list")) {
         return;
     }
