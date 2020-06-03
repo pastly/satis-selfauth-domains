@@ -163,7 +163,8 @@ function onion_extractBaseDomain(domain) {
 class OnionSig {
     constructor(nacl, onion, base64Value) {
         let ED25519_SIG_LEN = 64;
-        let MAGIC = "satis-guard-----";
+        let MAGIC_V0 = "satis-guard-----";
+        let MAGIC_V1 = "satis-guard-v1-----";
         let allAsBytes;
         try {
             allAsBytes = window.atob(base64Value);
@@ -181,8 +182,13 @@ class OnionSig {
 
         let offset = 0;
 
-        let magic = parseStringFromByteBuffer(dataBytes.buffer, offset, MAGIC.length);
-        offset += MAGIC.length;
+        let magic_v0 = parseStringFromByteBuffer(dataBytes.buffer, offset, MAGIC_V0.length);
+        let magic_v1 = parseStringFromByteBuffer(dataBytes.buffer, offset, MAGIC_V1.length);
+        if (magic_v1 === MAGIC_V1) {
+            offset += MAGIC_V1.length;
+        } else {
+            offset += MAGIC_V0.length;
+        }
         let timeCenter = parseUint64FromByteBuffer(dataBytes.buffer, offset);
         offset += 8;
         let timeWindow = parseUint64FromByteBuffer(dataBytes.buffer, offset);
@@ -198,14 +204,26 @@ class OnionSig {
         let fp = parseStringFromByteBuffer(dataBytes.buffer, offset, fpLen);
         offset += fpLen;
 
+        let labels;
+        if (magic_v1 === MAGIC_V1) {
+            let labelsLen = parseUint32FromByteBuffer(dataBytes.buffer, offset);
+            offset += 4;
+            labels = parseStringFromByteBuffer(dataBytes.buffer, offset, labelsLen);
+            offset += labelsLen;
+            labels = labels.split(',');
+        }
+
         this.readAllBytes = offset + ED25519_SIG_LEN == allAsBytes.length;
         this.validSig = validSig;
         this.magic = magic;
+        this.isV1 = magic === MAGIC_V1;
         this.timeCenter = timeCenter;
         this.timeWindow = timeWindow;
         this.nonce = nonce;
         this.domain = domain;
         this.fingerprint = fp;
+        // undefined if isV1 == false
+        this.labels = labels;
     }
 }
 

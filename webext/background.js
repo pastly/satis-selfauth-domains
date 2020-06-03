@@ -106,6 +106,14 @@ function generateRedirect_notOnTrustedSATList(urlHostname) {
     let pageURL = browser.extension.getURL("pages/notOnTrustedSATList.html");
     pageURL = addParam(pageURL, "domain", urlHostname);
     return { "redirectUrl": pageURL };
+
+function generateRedirect_nullSetAttestedLabel(urlHostname, selfLabels, satLabels, errorMessage) {
+    let pageURL = browser.extension.getURL("pages/notOnTrustedSATList.html");
+    pageURL = addParam(pageURL, "domain", urlHostname);
+    pageURL = addParam(pageURL, "selfLabels", selfLabels);
+    pageURL = addParam(pageURL, "satLabels", satLabels);
+    pageURL = addParam(pageURL, "error", errorMessage);
+    return { "redirectUrl": pageURL };
 }
 
 function _returnWithSelectAltSvcHeaders(headers, altsvcHeaders) {
@@ -467,6 +475,54 @@ async function onHeadersReceived_verifySelfAuthConnection(details) {
         return generateRedirect_badSigEtc(sigHeader, url.hostname, fingerprint,
             err);
     }
+
+    let attestedSat = onHeadersReceived_allowAttestedSATDomainsOnly(details);
+
+    // attestedSat is:
+    //   undefined if this connection should not consider sattestation
+    //   true if it is sattested
+    //   Object with a 'redirectUrl' property if it failed validation
+    if (attestedSat && attestedSat === true) {
+        if (sigHeader.isV1) {
+            let lists = satListsContaining(url.hostname);
+            if (!lists) {
+                err = "Null sattestors list";
+            }
+
+            let selfLabels = sigHeader.labels;
+            let sattestedLabels = [];
+
+            for (let sattestor in lists) {
+                sattestedLabels.push.apply(sattestor.labels);
+            }
+            let foundMatch = false;
+            for (let label of selfLabels) {
+                if (label === "*") {
+                    foundMatch = true;
+                    break;
+                }
+
+                if ("*" in sattestedLabels) {
+                    foundMatch = true;
+                    break;
+                }
+                if (label in sattestedLabels) {
+                    foundMatch = true;
+                    break;
+                }
+            }
+
+            if (!foundMatch) {
+                err = "Label sets agreement not found.";
+            }
+
+            if (!!err) {
+                return generateRedirect_nullSetAttestedLabel(url.hostname, selfLabels, sattestedLabels, err);
+            }
+        } else {
+            return attestedSat;
+        }
+    }
 }
 
 function onHeadersReceived_allowAttestedSATDomainsOnly(details) {
@@ -500,7 +556,7 @@ function onHeadersReceived_allowAttestedSATDomainsOnly(details) {
     if (hash in lists) {
         log_debug("So far we are allowing", url.hostname, "because it",
             "appears in list", lists[hash].name);
-        return;
+        return true;
     }
 
     let b64TokenHeaders = getSatTokenHeaders(details.responseHeaders);
@@ -601,7 +657,7 @@ function onHeadersReceived_allowAttestedSATDomainsOnly(details) {
             }
 
             log_debug("Provided token is valid");
-            return;
+            return true;
         }
     }
 
@@ -745,6 +801,7 @@ function onMessage_satDomainList(obj) {
     for (mapping of list) {
         let satName = mapping.satName;
         let baseName = mapping.baseName;
+        let labels = mapping.labels;
         log_debug("Inspecting mapping from", satName, "to", baseName);
         if (!satName.endsWith(baseName)) {
             log_debug("Ignoring", satName, "bc it doesn't end with", baseName);
@@ -760,7 +817,7 @@ function onMessage_satDomainList(obj) {
             log_debug("Ignoring", satName, "bc it isn't a SAT domain (2)");
             continue;
         }
-        log_debug("Keeping", satName, "to", baseName);
+        log_debug("Keeping", satName, "to", baseName, "with labels", labels);
         keepList.push(mapping);
     }
     list = keepList;
@@ -1078,11 +1135,11 @@ function addEventListeners() {
         {urls: ["<all_urls>"]},
         ["blocking", "responseHeaders"]
     );
-    browser.webRequest.onHeadersReceived.addListener(
-        onHeadersReceived_allowAttestedSATDomainsOnly,
-        {urls: ["<all_urls>"]},
-        ["blocking", "responseHeaders"]
-    );
+    //browser.webRequest.onHeadersReceived.addListener(
+    //    onHeadersReceived_allowAttestedSATDomainsOnly,
+    //    {urls: ["<all_urls>"]},
+    //    ["blocking", "responseHeaders"]
+    //);
     browser.webRequest.onHeadersReceived.addListener(
         onHeadersReceived_cacheSecurityInfo,
         {urls: ["<all_urls>"]},

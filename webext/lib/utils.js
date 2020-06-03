@@ -181,7 +181,7 @@ function handleSattestations(sat) {
                 continue;
             }
             // TODO Add labels and valid_after
-            out.add({'satName': sattestee.onion + "onion." + sattestee.sattestee, 'baseName': sattestee.sattestee});
+            out.add({'satName': sattestee.onion + "onion." + sattestee.sattestee, 'baseName': sattestee.sattestee, 'labels': sattestee.labels});
         }
     } else {
         log_debug("msg does not contain sattestees");
