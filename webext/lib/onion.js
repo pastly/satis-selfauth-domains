@@ -182,12 +182,15 @@ class OnionSig {
 
         let offset = 0;
 
+        let magic;
         let magic_v0 = parseStringFromByteBuffer(dataBytes.buffer, offset, MAGIC_V0.length);
         let magic_v1 = parseStringFromByteBuffer(dataBytes.buffer, offset, MAGIC_V1.length);
         if (magic_v1 === MAGIC_V1) {
             offset += MAGIC_V1.length;
+            magic = magic_v1;
         } else {
             offset += MAGIC_V0.length;
+            magic = magic_v0;
         }
         let timeCenter = parseUint64FromByteBuffer(dataBytes.buffer, offset);
         offset += 8;

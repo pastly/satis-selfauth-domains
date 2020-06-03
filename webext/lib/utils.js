@@ -224,7 +224,7 @@ function lightlyParseSatJSON(content) {
     }
     let satIdx = content.indexOf(satArr[1]);
 
-    const sigPropRe = /"signature"\s*:\s*"[a-zA-Z0-9/=]*"\s*}$/;
+    const sigPropRe = /"signature"\s*:\s*"[a-zA-Z0-9/\+=]*"\s*}$/;
     let startOfSigObject = trimmedContent.search(sigPropRe);
     if (startOfSigObject === -1) {
         log_debug("Text doesn't end with the signature property.");
