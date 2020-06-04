@@ -180,14 +180,17 @@ function handleSattestations(sat) {
                 log_debug(`sattestee does not contain labels: ${sattestee}`);
                 continue;
             }
+            let labels = sattestee.labels.split(",");
             // TODO Add labels and valid_after
-            out.add({'satName': sattestee.onion + "onion." + sattestee.sattestee, 'baseName': sattestee.sattestee, 'labels': sattestee.labels});
+            out.add({'satName': sattestee.onion + "onion." + sattestee.sattestee, 'baseName': sattestee.sattestee, 'labels': labels});
         }
     } else {
         log_debug("msg does not contain sattestees");
     }
 
-    return {"url": sat.url, "set": out, "wellknown": true, "satUrl": sat.isSatUrl};
+    let sattestor_labels = sat.sattestor_labels.split(",");
+
+    return {"url": sat.url, 'labels': sattestor_labels, "set": out, "wellknown": true, "satUrl": sat.isSatUrl};
 }
 
 function sendSATDomainListRequest(resp) {
