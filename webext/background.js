@@ -531,6 +531,8 @@ async function onHeadersReceived_verifySelfAuthConnection(details) {
         } else {
             return attestedSat;
         }
+    } else {
+        return attestedSat;
     }
 }
 
