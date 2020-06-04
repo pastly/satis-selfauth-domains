@@ -840,16 +840,16 @@ function onMessage_satDomainList(obj) {
 
     // Add it to the trusted storage if necessary
     let trustedSATLists = lsget("trustedSATLists") || {};
-    let hash = sha3_256.create().update(hostname).hex();
+    let updateUrl = hostname;
+    if (wellknown) {
+        updateUrl = updateUrl + "/.well-known/sattestation.json";
+    }
+    if (satUrl) {
+        updateUrl = updateUrl + "?onion=" + onion.onion;
+    }
+    let hash = sha3_256.create().update(updateUrl).hex();
     if (!(hash in trustedSATLists)) {
         log_debug("Adding", hostname, "to trusted SAT lists");
-        let updateUrl = hostname;
-        if (wellknown) {
-            updateUrl = updateUrl + "/.well-known/sattestation.json";
-        }
-        if (satUrl) {
-            updateUrl = updateUrl + "?onion=" + onion.onion;
-        }
         trustedSATLists[hash] = new SATList(
             updateUrl, list, false, false, false, null,
             onion_extractBaseDomain(hostname), wellknown, satUrl);
