@@ -494,7 +494,13 @@ async function onHeadersReceived_verifySelfAuthConnection(details) {
             let sattestedLabels = [];
 
             for (let sattestor in lists) {
-                sattestedLabels.push.apply(sattestor.labels);
+                let sattestees = lists[sattestor].list;
+                for (let sattestee of sattestees) {
+                    if (!sattestee.labels) {
+                        continue;
+                    }
+                    sattestedLabels.push.apply(sattestedLabels, sattestee.labels);
+                }
             }
             let foundMatch = false;
             for (let label of selfLabels) {
@@ -507,9 +513,11 @@ async function onHeadersReceived_verifySelfAuthConnection(details) {
                     foundMatch = true;
                     break;
                 }
-                if (label in sattestedLabels) {
-                    foundMatch = true;
-                    break;
+                for (let satLabel of sattestedLabels) {
+                    if (label === satLabel ) {
+                        foundMatch = true;
+                        break;
+                    }
                 }
             }
 
@@ -554,7 +562,7 @@ function onHeadersReceived_allowAttestedSATDomainsOnly(details) {
     // If there's zero list hashes in the returned object, then we will look for
     // a credential in the HTTP headers.
     let lists = satListsContaining(url.hostname);
-    if (hash in lists) {
+    for (hash in lists) {
         log_debug("So far we are allowing", url.hostname, "because it",
             "appears in list", lists[hash].name);
         return true;
