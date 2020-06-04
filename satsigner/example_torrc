@@ -1,0 +1,6 @@
+DataDirectory localdatadir
+HiddenServiceDir localdatadir/localexample
+HiddenServicePort 63970 127.0.0.1:63970
+
+SocksPort 0
+ORPort 0
