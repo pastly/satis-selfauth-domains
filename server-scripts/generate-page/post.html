@@ -1,3 +1,44 @@
+</ol>
+<h3>About</h3>
+<p>A <b>self-authenticating domain name</b> is one that incorporates into itself the
+information needed to authenticate a connection to the domain.</p>
+
+<p>In practice, the self-authenticating address is (primarily) a cryptographic
+public key that verifies a cryptographic signature over information describing
+connection information.</p>
+
+<p>A <b>self-authenticating traditional (SAT)
+    domain name</b>, therefore, begins as a traditional domain (such
+as example.com) and somehow binds to itself everything
+needed for self-authentication. For example, prepending a
+self-authenticating domain as a subdomain of a traditional
+domain.</p>
+
+<p>If <a href="http://{onion}.onion">http://{onion}.onion</a>
+is the address of a Tor onion service, then {onion}.onion is a
+<b>self-authenticating domain</b>.</p>
+
+<p>As such,
+<b>{onion}onion.{origin}</b>
+is a <b>self-authenticating traditional domain</b> because a traditional domain
+is bound to a self-authenticating domain (binding {origin} with
+{onion}).</p>
+
+<p>A <b>self-authenticating address (SATA)</b> is a URL joining a traditional address
+(http://example.com/foo/bar) and a self-authenticating domain. They are joined either:
+<ul>
+    <li>as a SAT domain (as described above)</li>
+    <li>by appending the self-authenticating address in a query string</li>
+</ul>
+</p>
+
+<p>Extending the previous example, a SATA of <a href="https://{origin}">
+    https://{origin}</a>
+is <a href="https://{origin}?onion={onion}">https://{origin}?onion={onion}</a>.</p>
+
+<p>Regardless of which SATA format is used, the <b>SAT domain</b> format is
+considered <b>canonical form</b>.</p>
+
 </div> <!-- body_contents -->
 </body>
 </html>

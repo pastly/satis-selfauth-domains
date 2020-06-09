@@ -11,27 +11,9 @@ logging.basicConfig(format='%(asctime)s %(levelname)s %(threadName)s '
                     level=logging.DEBUG)
 log = logging.getLogger(__name__)
 
-LIST_ID = 'satDomainList'
-LIST_ITEM_ID = 'satDomainListItem'
-LIST_ITEM_SATNAME_CLASS = 'satDomainSATName'
-LIST_ITEM_BASENAME_CLASS = 'satDomainBaseName'
-
-START_HTML = '''
-<ul id="%s">
-''' % LIST_ID
-
 ITEM_HTML = '''
-<li class='%s'>
-    <a href='https://{sat_name}'><span class="%s">{sat_name}</span></a>
-    is a valid SAT domain for
-    <a href='https://{trad_name}'><span class="%s">{trad_name}</span></a>
-</li>
-''' % (LIST_ITEM_ID, LIST_ITEM_SATNAME_CLASS, LIST_ITEM_BASENAME_CLASS)
-
-END_HTML = '''
-</ul> <!-- %s -->
-''' % LIST_ID
-
+  <li><a href='https://{sat_name}'>{sat_name}</a> -> <a href='https://{trad_name}'>{trad_name}</a></li>
+'''
 
 def parse_domain_list_fd(fd):
     out = {}
@@ -39,11 +21,11 @@ def parse_domain_list_fd(fd):
         line = line.strip()
         if not len(line) or line[0] == '#':
             continue
-        names = line.split()
-        if len(names) != 2:
+        sattestee = line.split()
+        if len(sattestee) != 5:
             log.warning('Ignoring malformed line: %s', line)
             continue
-        selfauth_name, trad_name = names
+        selfauth_name, trad_name, labels, verified_date, refreshed_date = sattestee
         if not selfauth_name.endswith(trad_name):
             log.warning(
                 'Ignoring line "%s": selfauth name must end with traditional '
@@ -74,12 +56,10 @@ def get_config(args):
 
 def output_html(fd, pre_text, post_text, mapping):
     fd.write(pre_text)
-    fd.write(START_HTML)
     for trad_name in mapping:
         for selfauth_name in mapping[trad_name]:
             fd.write(
                 ITEM_HTML.format(sat_name=selfauth_name, trad_name=trad_name))
-    fd.write(END_HTML)
     fd.write(post_text)
 
 
@@ -95,7 +75,13 @@ def main(args, conf):
         if os.path.isfile(pre_fname) else ''
     post_text = open(post_fname, 'rt').read() \
         if os.path.isfile(post_fname) else ''
-    output_html(open(args.output, 'wt'), pre_text, post_text, mapping)
+    origin = conf.get('site', 'origin')
+    onion = conf.get('site', 'onion')
+    sattestora_origin = conf.get('site', 'sattestora_origin')
+    sattestorb_origin = conf.get('site', 'sattestorb_origin')
+    formated_pre = pre_text.format(onion=onion, origin=origin, sattestora_origin=sattestora_origin, sattestorb_origin=sattestorb_origin)
+    formated_post = post_text.format(onion=onion, origin=origin, sattestora_origin=sattestora_origin, sattestorb_origin=sattestorb_origin)
+    output_html(open(args.output, 'wt'), formated_pre, formated_post, mapping)
     return 0
 
 

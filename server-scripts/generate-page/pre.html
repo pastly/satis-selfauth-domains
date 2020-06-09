@@ -1,24 +1,13 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-	<title>SAT domain page</title>
+	<title>SAT Address page</title>
 	<link href="style.css" rel="stylesheet" type="text/css" />
 	<meta charset="utf-8" />
 </head>
 <body>
 <div id="body_contents">
-<p>
-Hi, this is the catch-all satis page.
-</p>
-
-<p>
-Here are some informational links.
-</p>
-
-<ul>
-<li><a href='https://github.com/pastly/satis-selfauth-domains'>Github repo</a></li>
-<li><a href='https://demos.traudt.xyz/extensions/firefox/sat_domain_tools'>Extension</a></li>
-</ul>
+<h2>Self-Authenticating Traditional (SAT) Addresses</h2>
 
 <p>
 If
@@ -41,20 +30,27 @@ from visiting the "bad" pages (on FF 63 or newer or TB 8.5 alpha or newer).
 </p>
 
 <ul>
-<li>(SAT domain) <a href='https://hllvtjcjomneltczwespyle2ihuaq5hypqaavn3is6a7t2dojuaa6rydonion.satis.system33.pw'>hllvtjcjomneltczwespyle2ihuaq5hypqaavn3is6a7t2dojuaa6rydonion.satis.system33.pw</a></li>
-<li>(Traditional domain) <a href='https://satis.system33.pw'>satis.system33.pw</a></li>
-<li><a href='index.html'>/index.html</a></li>
-<li><a href='good.html'>/good.html</a></li>
-<li><a href='badtime.html'>/badtime.html</a></li>
-<li><a href='badfp.html'>/badfp.html</a></li>
-<li><a href='baddomain.html'>/baddomain.html</a></li>
-<li><a href='badsignature.html'>/badsignature.html</a></li>
+    <li>(SAT domain) <a href='https://{onion}onion.{origin}'>{onion}onion.{origin}</a></li>
+    <li>(SAT address) <a href='https://{origin}?onion={onion}'>https://{origin}?onion={onion}</a></li>
+    <li>(Traditional domain) <a href='https://{origin}'>{origin}</a></li>
+    <li><a href='index.html' target="_blank">/index.html</a></li>
+    <li><a href='good.html' target="_blank">/good.html</a></li>
+    <li><a href='badtime.html' target="_blank">/badtime.html</a></li>
+    <li><a href='badfp.html' target="_blank">/badfp.html</a></li>
+    <li><a href='baddomain.html' target="_blank">/baddomain.html</a></li>
+    <li><a href='badsignature.html' target="_blank">/badsignature.html</a></li>
 </ul>
 
 <p>
-Tor Browser 8.0 stable is capable of everything except the above "bad" link
+Tor Browser 8.0+ stable are capable of everything except the above "bad" link
 tests.
 </p>
+
+<p>Two trusted <b>SAT address attestors</b> (Sattestors) are:<p>
+<ul>
+    <li><a href="https://sattestorA.{sattestora_origin}" target="_blank">Sattestor A</a></li>
+    <li><a href="https://sattestorB.{sattestorb_origin}" target="_blank">Sattestor B</a></li>
+</ul>
 
 <p>
 Other features of this extension include:
@@ -66,5 +62,8 @@ Other features of this extension include:
 <li>And more stuff in the works</li>
 </ul>
 
-<p>We have verified the following self-authenticating traditional (SAT) domain
-name mappings with the owner(s) of the following domains.</p>
+<p>We have <a href="https://{origin}/.well-known/sattestation.json?onion={onion}" target="_blank">verified</a>
+the following self-authenticating traditional (SAT) domain
+name mappings with the owner(s) of the following domains:</p>
+
+<ol>
