@@ -70,7 +70,13 @@ def main(args, conf):
         return 1
     mapping = parse_domain_list_fd(open(domain_list_fname, 'rt'))
     pre_fname = conf.get('paths', 'pre_html_fname')
+    if not os.path.isfile(pre_fname):
+        log.error('Configured domain list %s must exist', pre_fname)
+        return 1
     post_fname = conf.get('paths', 'post_html_fname')
+    if not os.path.isfile(post_fname):
+        log.error('Configured domain list %s must exist', post_fname)
+        return 1
     pre_text = open(pre_fname, 'rt').read() \
         if os.path.isfile(pre_fname) else ''
     post_text = open(post_fname, 'rt').read() \
