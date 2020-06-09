@@ -7,7 +7,7 @@ Header always set Alt-Svc "h2=\"put-onion-address-here.onion:443\"; ma=3600"
 Header always set X-SAT-SIG M4_SATIS_SIG
 
 # Set error pages
-SetEnvIf REQUEST_URI "badtime/$" SatSig=M4_SATIS_SIG_BAD_TIME
+SetEnvIf Request_Uri "badtime/$" SatSig=M4_SATIS_SIG_BAD_TIME
 SetEnvIf Request_Uri "badfp/$" SatSig=M4_SATIS_SIG_BAD_FP
 SetEnvIf Request_Uri "baddomain/$" SatSig=M4_SATIS_SIG_BAD_DOMAIN
 SetEnvIf Request_Uri "badsig/$" SatSig=M4_SATIS_SIG_BAD_SIG
