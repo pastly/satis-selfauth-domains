@@ -24,7 +24,7 @@ use ed25519_dalek::Signature;
 const KEY_FILE_PREFIX: &str = "hs_ed25519_";
 const SECRET_KEY_FILE_SUFFIX: &str = "secret_key";
 const PUBLIC_KEY_FILE_SUFFIX: &str = "public_key";
-const DOMAINS_TXT: &str = "domains.txt";
+const SATTESTATION_CSV: &str = "sattestation.csv";
 
 fn open_key_file(file: String) -> Result<File, IoError> {
     File::open(file)
@@ -550,7 +550,7 @@ fn main() {
     let outdir = args[4].clone();
     let secret_key_file_path = format!("{}{}{}", path, KEY_FILE_PREFIX, SECRET_KEY_FILE_SUFFIX);
     let public_key_file_path = format!("{}{}{}", path, KEY_FILE_PREFIX, PUBLIC_KEY_FILE_SUFFIX);
-    let sattestation_file_path = format!("{}{}", outdir, DOMAINS_TXT);
+    let sattestation_file_path = format!("{}{}", outdir, SATTESTATION_CSV);
 
     let mut sk_file: File = match open_key_file(secret_key_file_path.clone()) {
         Ok(v) => v,
@@ -630,54 +630,21 @@ fn main() {
         }
     };
 
-    let sattestations_together = match read_sattestation(&sattestation_file_path.clone()) {
+    let sattestations = match read_sattestation(&sattestation_file_path.clone()) {
         Ok(s) => s,
         Err(e) => {
             println!("Error reading file: {}: {:?}", sattestation_file_path, e);
             return;
         },
     };
-
-    let sattestations_vec: Vec<&str> = sattestations_together.split_whitespace().collect();
-    if sattestations_vec.len() % 5 != 0 {
-        println!("Sattestation list is malformed");
-        return;
-    }
-
-    let mut list_of_sattestations = Vec::new();
-    let mut el = sattestations_vec.into_iter();
-    loop {
-        let mut sattestation = Vec::new();
-        match el.next() {
-            Some(el) => {
-                let satd = el;
-                if satd.len() < 56 {
-                    println!("Sattestee SAT address is invalid");
-                    return;
-                }
-                let onionaddr_trad: Vec::<&str> = satd.split("onion").collect();
-                let onionaddr = onionaddr_trad[0];
-                if onionaddr.len() != 56 {
-                    println!("Sattestee onion address is invalid");
-                    return;
-                }
-                sattestation.push(format!("onion={}", onionaddr));
-            },
-            // We must be done now.
-            None => break,
-        };
-        sattestation.push(format!("sattestee={}", el.next().unwrap()));
-        sattestation.push(format!("labels={}", el.next().unwrap()));
-        sattestation.push(format!("valid_after={}", el.next().unwrap()));
-        sattestation.push(format!("refreshed_on={}", el.next().unwrap()));
-        list_of_sattestations.push(sattestation.join(":"));
-    }
-
-    let sattestations = list_of_sattestations.join(";");
+    let sattestations = sattestations.replace("\n",";");
 
     makeSatList(&expandedSecKey, &publicKey, &hostname, &onionaddr, &sattestations);
 
     for s in sattestations.split(";") {
+      if s.len() == 0 {
+          continue;
+      }
       let sattestee: Vec<&str> = s.split(":").collect();
       println!("{}\n", constructSatToken(&sattestee).unwrap());
     }
