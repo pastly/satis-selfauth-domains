@@ -24,6 +24,7 @@ use ed25519_dalek::Signature;
 const KEY_FILE_PREFIX: &str = "hs_ed25519_";
 const SECRET_KEY_FILE_SUFFIX: &str = "secret_key";
 const PUBLIC_KEY_FILE_SUFFIX: &str = "public_key";
+const DOMAINS_TXT: &str = "domains.txt";
 
 fn open_key_file(file: String) -> Result<File, IoError> {
     File::open(file)
@@ -250,6 +251,16 @@ fn read_key(path: &str) -> Result<Vec<u8>, IoError> {
     }
 }
 
+fn read_sattestation(path: &str) -> Result<String, IoError> {
+    match read_to_string(path.clone()) {
+        Ok(s) => Ok(s),
+        Err(e) => {
+            println!("Error reading file: {}: {:?}", path, e);
+            return Err(e);
+        },
+    }
+}
+
 fn printSatTokenContent(indent: &str, sattesteeToken: &Vec<&str>) -> String {
     // Strip leading and trailing '{' and '}'
     let mut content = String::new();
@@ -262,7 +273,7 @@ fn printSatTokenContent(indent: &str, sattesteeToken: &Vec<&str>) -> String {
 }
 
 fn constructSatToken(sattestee: &Vec<&str>) -> Result<String, IoError> {
-    if sattestee.len() != 4 {
+    if sattestee.len() != 5 {
       return Err(IoError::new(ErrorKind::InvalidData, "Sattestee invalid length".to_string()));
     }
     let mut sat = String::new();
@@ -298,7 +309,7 @@ fn constructPrettySatObject(hostname: &str, onionaddr: &str, sattestations: &str
   //sattestations.split(":").map(|&s| s.split(",").map(|&v| sat.push_str(&v)).collect()).collect();
   for s in sattestations.split(";") {
     let sattestee: Vec<&str> = s.split(":").collect();
-    if sattestee.len() != 4 {
+    if sattestee.len() != 5 {
       continue;
     }
     let mut sat = String::new();
@@ -354,7 +365,7 @@ fn makeSatTokens(expandedSecKey: &ExpandedSecretKey, publicKey: &PublicKey, host
   let mut tokens = Vec::new();
   for s in sattestations.split(";") {
     let sattestee: Vec<&str> = s.split(":").collect();
-    if sattestee.len() != 4 {
+    if sattestee.len() != 5 {
       continue;
     }
     let mut unsignedToken = String::new();
@@ -539,6 +550,7 @@ fn main() {
     let outdir = args[4].clone();
     let secret_key_file_path = format!("{}{}{}", path, KEY_FILE_PREFIX, SECRET_KEY_FILE_SUFFIX);
     let public_key_file_path = format!("{}{}{}", path, KEY_FILE_PREFIX, PUBLIC_KEY_FILE_SUFFIX);
+    let sattestation_file_path = format!("{}{}", outdir, DOMAINS_TXT);
 
     let mut sk_file: File = match open_key_file(secret_key_file_path.clone()) {
         Ok(v) => v,
@@ -618,10 +630,52 @@ fn main() {
         }
     };
 
-    let sattestations = String::from("sattestee=satis.system33.pw:onion=hllvtjcjomneltczwespyle2ihuaq5hypqaavn3is6a7t2dojuaa6ryd:labels=news:valid_after=2020-04-30");
+    let sattestations_together = match read_sattestation(&sattestation_file_path.clone()) {
+        Ok(s) => s,
+        Err(e) => {
+            println!("Error reading file: {}: {:?}", sattestation_file_path, e);
+            return;
+        },
+    };
+
+    let sattestations_vec: Vec<&str> = sattestations_together.split_whitespace().collect();
+    if sattestations_vec.len() % 5 != 0 {
+        println!("Sattestation list is malformed");
+        return;
+    }
+
+    let mut list_of_sattestations = Vec::new();
+    let mut el = sattestations_vec.into_iter();
+    loop {
+        let mut sattestation = Vec::new();
+        match el.next() {
+            Some(el) => {
+                let satd = el;
+                if satd.len() < 56 {
+                    println!("Sattestee SAT address is invalid");
+                    return;
+                }
+                let onionaddr_trad: Vec::<&str> = satd.split("onion").collect();
+                let onionaddr = onionaddr_trad[0];
+                if onionaddr.len() != 56 {
+                    println!("Sattestee onion address is invalid");
+                    return;
+                }
+                sattestation.push(format!("onion={}", onionaddr));
+            },
+            // We must be done now.
+            None => break,
+        };
+        sattestation.push(format!("sattestee={}", el.next().unwrap()));
+        sattestation.push(format!("labels={}", el.next().unwrap()));
+        sattestation.push(format!("valid_after={}", el.next().unwrap()));
+        sattestation.push(format!("refreshed_on={}", el.next().unwrap()));
+        list_of_sattestations.push(sattestation.join(":"));
+    }
+
+    let sattestations = list_of_sattestations.join(";");
+
     makeSatList(&expandedSecKey, &publicKey, &hostname, &onionaddr, &sattestations);
-
-
 
     for s in sattestations.split(";") {
       let sattestee: Vec<&str> = s.split(":").collect();
@@ -670,7 +724,7 @@ mod tests {
     fn test_serde() {
       let hostname = "sata.example.org";
       let onionaddr = "l4yxbgn74e6ukw6zv3jojaf6bkqlgea2ny37ocry2i4xartdjkqqxwid";
-      let sattestations = String::from("sattestee=satis.system33.pw:sattestee_onion=hllvtjcjomneltczwespyle2ihuaq5hypqaavn3is6a7t2dojuaa6ryd:sattestee_labels=news:valid_after=2020-04-30");
+      let sattestations = String::from("sattestee=satis.system33.pw:sattestee_onion=hllvtjcjomneltczwespyle2ihuaq5hypqaavn3is6a7t2dojuaa6ryd:sattestee_labels=news:valid_after=2020-04-30:refreshed_on=2020-05-15");
       let secretKey = "PT0gZWQyNTUxOXYxLXNlY3JldDogdHlwZTAgPT0AAAC4pxnkg/1N6OIt/KdRPJPvvXcyNBvRzMlBGb7rjZ0GZ0qVldDtwQFJ13OMkPAPORHbeSsY5izrIFyRVye/ifoI";
       let publicKey = "PT0gZWQyNTUxOXYxLXB1YmxpYzogdHlwZTAgPT0AAABfMXCZv+E9RVvZrtLkgL4KoLMQGm439wo40jlwRmNKoQ==";
 
@@ -680,7 +734,8 @@ mod tests {
       let expected_TokenContent = " \"sattestee\": \"satis.system33.pw\",
  \"sattestee_onion\": \"hllvtjcjomneltczwespyle2ihuaq5hypqaavn3is6a7t2dojuaa6ryd\",
  \"sattestee_labels\": \"news\",
- \"valid_after\": \"2020-04-30\"\n";
+ \"valid_after\": \"2020-04-30\",
+ \"refreshed_on\": \"2020-05-15\"\n";
       assert_eq!(expected_TokenContent, satTokenContent);
 
       let satTokenHeader = constructSatTokenHeader(hostname, onionaddr, " ", "\n");
@@ -701,14 +756,15 @@ mod tests {
         \"sattestee\": \"satis.system33.pw\",
         \"sattestee_onion\": \"hllvtjcjomneltczwespyle2ihuaq5hypqaavn3is6a7t2dojuaa6ryd\",
         \"sattestee_labels\": \"news\",
-        \"valid_after\": \"2020-04-30\"
+        \"valid_after\": \"2020-04-30\",
+        \"refreshed_on\": \"2020-05-15\"
       }}
     ]
   }}", hostname, onionaddr);
       assert_eq!(expected_SatObject, msg);
 
       let satToken = constructSatToken(&sattestee).unwrap();
-      let expected_Token = "\"sattestee\":\"satis.system33.pw\",\"sattestee_onion\":\"hllvtjcjomneltczwespyle2ihuaq5hypqaavn3is6a7t2dojuaa6ryd\",\"sattestee_labels\":\"news\",\"valid_after\":\"2020-04-30\"";
+      let expected_Token = "\"sattestee\":\"satis.system33.pw\",\"sattestee_onion\":\"hllvtjcjomneltczwespyle2ihuaq5hypqaavn3is6a7t2dojuaa6ryd\",\"sattestee_labels\":\"news\",\"valid_after\":\"2020-04-30\",\"refreshed_on\":\"2020-05-15\"";
       assert_eq!(expected_Token, satToken);
 
       let raw_secret_key = base64::decode(secretKey.as_bytes()).unwrap();
@@ -758,7 +814,7 @@ mod tests {
 
       assert!(satTokens.len() > 0);
         
-      let expected_UnsignedSatTokens = "{\"sat_list_version\":\"1\",\"sattestor\":\"sata.example.org\",\"sattestor_onion\":\"l4yxbgn74e6ukw6zv3jojaf6bkqlgea2ny37ocry2i4xartdjkqqxwid\",\"sattestor_labels\":\"*\",\"sattestee\":\"satis.system33.pw\",\"sattestee_onion\":\"hllvtjcjomneltczwespyle2ihuaq5hypqaavn3is6a7t2dojuaa6ryd\",\"sattestee_labels\":\"news\",\"valid_after\":\"2020-04-30\"}";
+      let expected_UnsignedSatTokens = "{\"sat_list_version\":\"1\",\"sattestor\":\"sata.example.org\",\"sattestor_onion\":\"l4yxbgn74e6ukw6zv3jojaf6bkqlgea2ny37ocry2i4xartdjkqqxwid\",\"sattestor_labels\":\"*\",\"sattestee\":\"satis.system33.pw\",\"sattestee_onion\":\"hllvtjcjomneltczwespyle2ihuaq5hypqaavn3is6a7t2dojuaa6ryd\",\"sattestee_labels\":\"news\",\"valid_after\":\"2020-04-30\",\"refreshed_on\":\"2020-05-15\"}";
 
       let expected_TaggedToken = format!("{}{}", "sattestation-token-v0", expected_UnsignedSatTokens);
       let expected_Sig = expandedSecKey.sign(expected_TaggedToken.as_bytes(), &publicKey).to_bytes();
