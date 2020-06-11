@@ -17,6 +17,7 @@ ITEM_HTML = '''
 
 def parse_domain_list_fd(fd):
     out = {}
+    sattestations={}
     for line in fd:
         line = line.strip()
         if not len(line) or line[0] == '#':
@@ -33,16 +34,34 @@ def parse_domain_list_fd(fd):
             continue
         if trad_name not in out:
             out[trad_name] = set()
+        if trad_name not in sattestations:
+            sattestations[trad_name] = set()
         log.debug(
             'Adding %s as selfauth name for %s',
             selfauth_name, trad_name)
         out[trad_name].add(selfauth_name)
+        # Assume the onion is the prefix of the bottom subdomain
+        subdomains = selfauth_name.split('.')
+        if len(subdomains) < 2:
+            log.warning(
+                'Ignoring line "%s": selfauth name not long enough for'
+                'SAT domain', line)
+            continue
+        oniononion = subdomains[0]
+        if not oniononion.endswith("onion"):
+            log.warning(
+                'Subdomain "%s": does not end with "onion"', oniononion)
+            continue
+        onion = oniononion[:-5]
+        sattestation="sattestee={selfauth_name}:onion={onion}:labels={labels}:valid_after={verified_date}:refreshed_on={refreshed_date}\n"
+        sattestations[trad_name].add(sattestation.format(selfauth_name=selfauth_name, onion=onion, labels=labels, verified_date=verified_date, refreshed_date=refreshed_date))
+
     num_trad = len(out)
     num_selfauth = len(set().union(*[out[n] for n in out]))
     log.info(
         'Loaded %s selfauth names for %d traditional names',
         num_selfauth, num_trad)
-    return out
+    return out, sattestations
 
 
 def get_config(args):
@@ -53,6 +72,10 @@ def get_config(args):
             c.read_file(open(fname, 'rt'), source=fname)
     return c
 
+def output_sattestation(fd, sattestations):
+    for trad_name in sattestations:
+        for sattestation in sattestations[trad_name]:
+            fd.write(sattestation)
 
 def output_html(fd, pre_text, post_text, mapping):
     fd.write(pre_text)
@@ -68,7 +91,7 @@ def main(args, conf):
     if not os.path.isfile(domain_list_fname):
         log.error('Configured domain list %s must exist', domain_list_fname)
         return 1
-    mapping = parse_domain_list_fd(open(domain_list_fname, 'rt'))
+    mapping, sattestations = parse_domain_list_fd(open(domain_list_fname, 'rt'))
     pre_fname = conf.get('paths', 'pre_html_fname')
     if not os.path.isfile(pre_fname):
         log.error('Configured domain list %s must exist', pre_fname)
@@ -88,6 +111,7 @@ def main(args, conf):
     formated_pre = pre_text.format(onion=onion, origin=origin, sattestora_origin=sattestora_origin, sattestorb_origin=sattestorb_origin)
     formated_post = post_text.format(onion=onion, origin=origin, sattestora_origin=sattestora_origin, sattestorb_origin=sattestorb_origin)
     output_html(open(args.output, 'wt'), formated_pre, formated_post, mapping)
+    output_sattestation(open(args.sattestation, 'wt'), sattestations)
     return 0
 
 
@@ -96,6 +120,7 @@ if __name__ == '__main__':
             formatter_class=ArgumentDefaultsHelpFormatter)
     p.add_argument('-c', '--config', type=str, default='config.ini')
     p.add_argument('-o', '--output', type=str, default='/dev/stdout')
+    p.add_argument('-s', '--sattestation', type=str, default='sattestation.csv')
     args = p.parse_args()
     conf = get_config(args)
     exit(main(args, conf))
