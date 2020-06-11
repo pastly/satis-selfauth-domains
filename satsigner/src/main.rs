@@ -290,16 +290,16 @@ fn constructSatToken(sattestee: &Vec<&str>) -> Result<String, IoError> {
 }
 
 
-fn constructSatTokenHeader(hostname: &str, onionaddr: &str, indentation: &str, new_line: &str) -> String {
+fn constructSatTokenHeader(hostname: &str, onionaddr: &str, sattestor_labels: &str, indentation: &str, new_line: &str) -> String {
   let mut header = String::new();
   write!(&mut header, "{}\"sat_list_version\":\"1\",{}", indentation, new_line);
   write!(&mut header, "{}\"sattestor\":\"{}\",{}", indentation, hostname, new_line);
   write!(&mut header, "{}\"sattestor_onion\":\"{}\",{}", indentation, onionaddr, new_line);
-  write!(&mut header, "{}\"sattestor_labels\":\"*\",{}", indentation, new_line);
+  write!(&mut header, "{}\"sattestor_labels\":\"{}\",{}", indentation, sattestor_labels, new_line);
   header
 }
 
-fn constructPrettySatObject(hostname: &str, onionaddr: &str, sattestations: &str) -> String {
+fn constructPrettySatObject(hostname: &str, onionaddr: &str, sattestations: &str, sattestor_labels: &str) -> String {
   const brace_indentation: [u8; 6] = [0x20; 6];
   const content_indentation: [u8; 8] = [0x20; 8];
   let brace_indent: String = String::from_utf8(brace_indentation.to_vec()).unwrap();
@@ -344,13 +344,13 @@ fn constructPrettySatObject(hostname: &str, onionaddr: &str, sattestations: &str
 " {{
 {}    \"sattestees\": {}
   }}",
-  constructSatTokenHeader(hostname, onionaddr, "    ", "\n"),
+  constructSatTokenHeader(hostname, onionaddr, sattestor_labels, "    ", "\n"),
   sat).to_string();
   r
 }
 
-fn makeSatList(expandedSecKey: &ExpandedSecretKey, publicKey: &PublicKey, hostname: &str, onionaddr: &str, sattestations: &str) {
-    let msg = constructPrettySatObject(&hostname, &onionaddr, &sattestations);
+fn makeSatList(expandedSecKey: &ExpandedSecretKey, publicKey: &PublicKey, hostname: &str, onionaddr: &str, sattestations: &str, sattestor_labels: &str) {
+    let msg = constructPrettySatObject(&hostname, &onionaddr, &sattestations, sattestor_labels);
     let tagged_msg = format!("{}{}", "sattestation-list-v0", msg);
     let sig = expandedSecKey.sign(tagged_msg.as_bytes(), &publicKey).to_bytes();
 
@@ -361,7 +361,7 @@ fn makeSatList(expandedSecKey: &ExpandedSecretKey, publicKey: &PublicKey, hostna
     println!("{{\n  \"sattestation\": {},\n  \"signature\": \"{}\"\n}}", msg, b64);
 }
 
-fn makeSatTokens(expandedSecKey: &ExpandedSecretKey, publicKey: &PublicKey, hostname: &str, onionaddr: &str, sattestations: &str) -> Vec<String> {
+fn makeSatTokens(expandedSecKey: &ExpandedSecretKey, publicKey: &PublicKey, hostname: &str, onionaddr: &str, sattestations: &str, sattestor_labels: &str) -> Vec<String> {
   let mut tokens = Vec::new();
   for s in sattestations.split(";") {
     let sattestee: Vec<&str> = s.split(":").collect();
@@ -370,7 +370,7 @@ fn makeSatTokens(expandedSecKey: &ExpandedSecretKey, publicKey: &PublicKey, host
     }
     let mut unsignedToken = String::new();
     let mut signedToken = String::new();
-    let header = constructSatTokenHeader(hostname, onionaddr, "", "");
+    let header = constructSatTokenHeader(hostname, onionaddr, sattestor_labels, "", "");
     let token = constructSatToken(&sattestee).unwrap();
     write!(unsignedToken, "{{{}{}}}", header, token);
 
@@ -540,17 +540,21 @@ fn now() -> u64 {
 
 fn main() {
     let args: Vec<String> = env::args().collect();
-    if args.len() != 5 {
-        println!("Provide path to keys, hostname, onion address, out directory");
+    if args.len() != 9 {
+        println!("Provide: <path to keys> <hostname> <onion address> <fingerprint> <self-labels> <sattestor labels> <in (config) directory> <out directory>");
         return;
     }
     let path = args[1].clone();
     let hostname = args[2].clone();
     let onionaddr = args[3].clone();
-    let outdir = args[4].clone();
+    let fingerprint = args[4].clone();
+    let self_labels = args[5].clone();
+    let sattestor_labels = args[6].clone();
+    let indir = args[7].clone();
+    let outdir = args[8].clone();
     let secret_key_file_path = format!("{}{}{}", path, KEY_FILE_PREFIX, SECRET_KEY_FILE_SUFFIX);
     let public_key_file_path = format!("{}{}{}", path, KEY_FILE_PREFIX, PUBLIC_KEY_FILE_SUFFIX);
-    let sattestation_file_path = format!("{}{}", outdir, SATTESTATION_CSV);
+    let sattestation_file_path = format!("{}{}", indir, SATTESTATION_CSV);
 
     let mut sk_file: File = match open_key_file(secret_key_file_path.clone()) {
         Ok(v) => v,
@@ -630,41 +634,38 @@ fn main() {
         }
     };
 
+    let mut is_sattestor = false;
     let sattestations = match read_sattestation(&sattestation_file_path.clone()) {
-        Ok(s) => s,
+        Ok(s) => {
+            is_sattestor = true;
+            s
+        },
         Err(e) => {
             println!("Error reading file: {}: {:?}", sattestation_file_path, e);
-            return;
+            "".to_string()
         },
     };
-    let sattestations = sattestations.replace("\n",";");
-
-    makeSatList(&expandedSecKey, &publicKey, &hostname, &onionaddr, &sattestations);
 
     for s in sattestations.split(";") {
       if s.len() == 0 {
           continue;
       }
       let sattestee: Vec<&str> = s.split(":").collect();
-      println!("{}\n", constructSatToken(&sattestee).unwrap());
     }
 
-    let fingerprint: &'static str = "535F53A467A26E686B828C112DA1038953EA4A84363E881CA28A31FE570676BD";
-    //const WEEKS_SINCE_EPOCH: u64 = 60*60*24*7*(52*50 + 25);
     let now: u64 = now();
     const SEVEN_DAY_VALIDITY_PERIOD: u64 = 60*60*24*7;
     const nonce: u32 = 5;
-    const labels: &'static str = "news,informational";
-    let good_sig = makeSatisSigV1(&expandedSecKey, &publicKey, &hostname, &onionaddr, fingerprint, now, SEVEN_DAY_VALIDITY_PERIOD, nonce, labels);
+    let good_sig = makeSatisSigV1(&expandedSecKey, &publicKey, &hostname, &onionaddr, &fingerprint, now, SEVEN_DAY_VALIDITY_PERIOD, nonce, &self_labels);
 
     const BAD_FINGERPRINT: &'static str = "DEADBEEF111111111111";
-    let bad_fingerprint = makeSatisSigV1(&expandedSecKey, &publicKey, &hostname, &onionaddr, BAD_FINGERPRINT, now, SEVEN_DAY_VALIDITY_PERIOD, nonce, labels);
+    let bad_fingerprint = makeSatisSigV1(&expandedSecKey, &publicKey, &hostname, &onionaddr, BAD_FINGERPRINT, now, SEVEN_DAY_VALIDITY_PERIOD, nonce, &self_labels);
 
     const BAD_TIME_CENTER: u64 = 9;
-    let bad_time = makeSatisSigV1(&expandedSecKey, &publicKey, &hostname, &onionaddr, fingerprint, BAD_TIME_CENTER, SEVEN_DAY_VALIDITY_PERIOD, nonce, labels);
+    let bad_time = makeSatisSigV1(&expandedSecKey, &publicKey, &hostname, &onionaddr, &fingerprint, BAD_TIME_CENTER, SEVEN_DAY_VALIDITY_PERIOD, nonce, &self_labels);
 
     const BAD_DOMAIN: &'static str = "example.com";
-    let bad_domain = makeSatisSigV1(&expandedSecKey, &publicKey, &BAD_DOMAIN, &onionaddr, fingerprint, now, SEVEN_DAY_VALIDITY_PERIOD, nonce, labels);
+    let bad_domain = makeSatisSigV1(&expandedSecKey, &publicKey, &BAD_DOMAIN, &onionaddr, &fingerprint, now, SEVEN_DAY_VALIDITY_PERIOD, nonce, &self_labels);
 
     let mut bad_sig = good_sig.clone();
     let middle = bad_sig.len()/2;
@@ -672,7 +673,7 @@ fn main() {
     bad_sig.insert(middle-1, c);
 
     const BAD_LABEL: &'static str = "foo";
-    let bad_label = makeSatisSigV1(&expandedSecKey, &publicKey, &hostname, &onionaddr, fingerprint, now, SEVEN_DAY_VALIDITY_PERIOD, nonce, BAD_LABEL);
+    let bad_label = makeSatisSigV1(&expandedSecKey, &publicKey, &hostname, &onionaddr, &fingerprint, now, SEVEN_DAY_VALIDITY_PERIOD, nonce, BAD_LABEL);
 
     write_sig(&outdir, "satis_sig", &good_sig);
     write_sig(&outdir, "satis_sig_bad_time", &bad_time);
@@ -680,6 +681,14 @@ fn main() {
     write_sig(&outdir, "satis_sig_bad_domain", &bad_domain);
     write_sig(&outdir, "satis_sig_bad_sig", &bad_sig);
     write_sig(&outdir, "satis_sig_bad_label", &bad_label);
+
+    if !is_sattestor {
+        return;
+    }
+
+    let sattestations = sattestations.replace("\n",";");
+
+    makeSatList(&expandedSecKey, &publicKey, &hostname, &onionaddr, &sattestations, &sattestor_labels);
 }
 
 #[cfg(test)]
@@ -705,14 +714,14 @@ mod tests {
  \"refreshed_on\": \"2020-05-15\"\n";
       assert_eq!(expected_TokenContent, satTokenContent);
 
-      let satTokenHeader = constructSatTokenHeader(hostname, onionaddr, " ", "\n");
+      let satTokenHeader = constructSatTokenHeader(hostname, onionaddr, "*", " ", "\n");
       let expected_TokenHeader = " \"sat_list_version\":\"1\",
  \"sattestor\":\"sata.example.org\",
  \"sattestor_onion\":\"l4yxbgn74e6ukw6zv3jojaf6bkqlgea2ny37ocry2i4xartdjkqqxwid\",
  \"sattestor_labels\":\"*\",\n";
       assert_eq!(expected_TokenHeader, satTokenHeader);
 
-      let msg = constructPrettySatObject(&hostname, &onionaddr, &sattestations);
+      let msg = constructPrettySatObject(&hostname, &onionaddr, &sattestations, "*");
       let expected_SatObject = format!(" {{
     \"sat_list_version\":\"1\",
     \"sattestor\":\"{}\",
@@ -777,7 +786,7 @@ mod tests {
           }
       };
 
-      let satTokens = makeSatTokens(&expandedSecKey, &publicKey, hostname, onionaddr, &sattestations);
+      let satTokens = makeSatTokens(&expandedSecKey, &publicKey, hostname, onionaddr, &sattestations, "*");
 
       assert!(satTokens.len() > 0);
         
