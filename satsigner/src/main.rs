@@ -293,7 +293,7 @@ fn constructSatToken(sattestee: &Vec<&str>) -> Result<String, IoError> {
 fn constructSatTokenHeader(hostname: &str, onionaddr: &str, sattestor_labels: &str, indentation: &str, new_line: &str) -> String {
   let mut header = String::new();
   write!(&mut header, "{}\"sat_list_version\":\"1\",{}", indentation, new_line);
-  write!(&mut header, "{}\"sattestor\":\"{}\",{}", indentation, hostname, new_line);
+  write!(&mut header, "{}\"sattestor_domain\":\"{}\",{}", indentation, hostname, new_line);
   write!(&mut header, "{}\"sattestor_onion\":\"{}\",{}", indentation, onionaddr, new_line);
   write!(&mut header, "{}\"sattestor_labels\":\"{}\",{}", indentation, sattestor_labels, new_line);
   header
@@ -700,23 +700,23 @@ mod tests {
     fn test_serde() {
       let hostname = "sata.example.org";
       let onionaddr = "l4yxbgn74e6ukw6zv3jojaf6bkqlgea2ny37ocry2i4xartdjkqqxwid";
-      let sattestations = String::from("sattestee=satis.system33.pw:sattestee_onion=hllvtjcjomneltczwespyle2ihuaq5hypqaavn3is6a7t2dojuaa6ryd:sattestee_labels=news:valid_after=2020-04-30:refreshed_on=2020-05-15");
+      let sattestations = String::from("domain=satis.system33.pw:onion=hllvtjcjomneltczwespyle2ihuaq5hypqaavn3is6a7t2dojuaa6ryd:labels=news:valid_after=2020-04-30:refreshed_on=2020-05-15");
       let secretKey = "PT0gZWQyNTUxOXYxLXNlY3JldDogdHlwZTAgPT0AAAC4pxnkg/1N6OIt/KdRPJPvvXcyNBvRzMlBGb7rjZ0GZ0qVldDtwQFJ13OMkPAPORHbeSsY5izrIFyRVye/ifoI";
       let publicKey = "PT0gZWQyNTUxOXYxLXB1YmxpYzogdHlwZTAgPT0AAABfMXCZv+E9RVvZrtLkgL4KoLMQGm439wo40jlwRmNKoQ==";
 
       let sattestee: Vec<&str> = sattestations.split(":").collect();
 
       let satTokenContent = printSatTokenContent(" ", &sattestee);
-      let expected_TokenContent = " \"sattestee\": \"satis.system33.pw\",
- \"sattestee_onion\": \"hllvtjcjomneltczwespyle2ihuaq5hypqaavn3is6a7t2dojuaa6ryd\",
- \"sattestee_labels\": \"news\",
+      let expected_TokenContent = " \"domain\": \"satis.system33.pw\",
+ \"onion\": \"hllvtjcjomneltczwespyle2ihuaq5hypqaavn3is6a7t2dojuaa6ryd\",
+ \"labels\": \"news\",
  \"valid_after\": \"2020-04-30\",
  \"refreshed_on\": \"2020-05-15\"\n";
       assert_eq!(expected_TokenContent, satTokenContent);
 
       let satTokenHeader = constructSatTokenHeader(hostname, onionaddr, "*", " ", "\n");
       let expected_TokenHeader = " \"sat_list_version\":\"1\",
- \"sattestor\":\"sata.example.org\",
+ \"sattestor_domain\":\"sata.example.org\",
  \"sattestor_onion\":\"l4yxbgn74e6ukw6zv3jojaf6bkqlgea2ny37ocry2i4xartdjkqqxwid\",
  \"sattestor_labels\":\"*\",\n";
       assert_eq!(expected_TokenHeader, satTokenHeader);
@@ -724,14 +724,14 @@ mod tests {
       let msg = constructPrettySatObject(&hostname, &onionaddr, &sattestations, "*");
       let expected_SatObject = format!(" {{
     \"sat_list_version\":\"1\",
-    \"sattestor\":\"{}\",
+    \"sattestor_domain\":\"{}\",
     \"sattestor_onion\":\"{}\",
     \"sattestor_labels\":\"*\",
     \"sattestees\": [
       {{
-        \"sattestee\": \"satis.system33.pw\",
-        \"sattestee_onion\": \"hllvtjcjomneltczwespyle2ihuaq5hypqaavn3is6a7t2dojuaa6ryd\",
-        \"sattestee_labels\": \"news\",
+        \"domain\": \"satis.system33.pw\",
+        \"onion\": \"hllvtjcjomneltczwespyle2ihuaq5hypqaavn3is6a7t2dojuaa6ryd\",
+        \"labels\": \"news\",
         \"valid_after\": \"2020-04-30\",
         \"refreshed_on\": \"2020-05-15\"
       }}
@@ -740,7 +740,7 @@ mod tests {
       assert_eq!(expected_SatObject, msg);
 
       let satToken = constructSatToken(&sattestee).unwrap();
-      let expected_Token = "\"sattestee\":\"satis.system33.pw\",\"sattestee_onion\":\"hllvtjcjomneltczwespyle2ihuaq5hypqaavn3is6a7t2dojuaa6ryd\",\"sattestee_labels\":\"news\",\"valid_after\":\"2020-04-30\",\"refreshed_on\":\"2020-05-15\"";
+      let expected_Token = "\"domain\":\"satis.system33.pw\",\"onion\":\"hllvtjcjomneltczwespyle2ihuaq5hypqaavn3is6a7t2dojuaa6ryd\",\"labels\":\"news\",\"valid_after\":\"2020-04-30\",\"refreshed_on\":\"2020-05-15\"";
       assert_eq!(expected_Token, satToken);
 
       let raw_secret_key = base64::decode(secretKey.as_bytes()).unwrap();
@@ -790,7 +790,7 @@ mod tests {
 
       assert!(satTokens.len() > 0);
         
-      let expected_UnsignedSatTokens = "{\"sat_list_version\":\"1\",\"sattestor\":\"sata.example.org\",\"sattestor_onion\":\"l4yxbgn74e6ukw6zv3jojaf6bkqlgea2ny37ocry2i4xartdjkqqxwid\",\"sattestor_labels\":\"*\",\"sattestee\":\"satis.system33.pw\",\"sattestee_onion\":\"hllvtjcjomneltczwespyle2ihuaq5hypqaavn3is6a7t2dojuaa6ryd\",\"sattestee_labels\":\"news\",\"valid_after\":\"2020-04-30\",\"refreshed_on\":\"2020-05-15\"}";
+      let expected_UnsignedSatTokens = "{\"sat_list_version\":\"1\",\"sattestor_domain\":\"sata.example.org\",\"sattestor_onion\":\"l4yxbgn74e6ukw6zv3jojaf6bkqlgea2ny37ocry2i4xartdjkqqxwid\",\"sattestor_labels\":\"*\",\"domain\":\"satis.system33.pw\",\"onion\":\"hllvtjcjomneltczwespyle2ihuaq5hypqaavn3is6a7t2dojuaa6ryd\",\"labels\":\"news\",\"valid_after\":\"2020-04-30\",\"refreshed_on\":\"2020-05-15\"}";
 
       let expected_TaggedToken = format!("{}{}", "sattestation-token-v0", expected_UnsignedSatTokens);
       let expected_Sig = expandedSecKey.sign(expected_TaggedToken.as_bytes(), &publicKey).to_bytes();
