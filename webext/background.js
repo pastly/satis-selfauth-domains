@@ -425,7 +425,7 @@ async function onHeadersReceived_verifySelfAuthConnection(details) {
     if (!rightNames) {
         err = "The TLS certificate doesn't have the proper " +
             "domains in the right places";
-        return generateRedirect_badSigEtc(sigHeader, url.hostname, fingerprint,
+        return generateRedirect_badSigEtc(sigHeader, hostname, fingerprint,
             err);
     }
 
@@ -485,7 +485,7 @@ async function onHeadersReceived_verifySelfAuthConnection(details) {
     //   Object with a 'redirectUrl' property if it failed validation
     if (attestedSat && attestedSat === true) {
         if (sigHeader.isV1) {
-            let lists = satListsContaining(url.hostname);
+            let lists = satListsContaining(hostname);
             if (!lists) {
                 err = "Null sattestors list";
             }
@@ -541,6 +541,7 @@ function onHeadersReceived_allowAttestedSATDomainsOnly(details) {
     if (!d.attestedSATDomainsOnly)
         return;
     let url = splitURL(details.url);
+    let hostname = url.hostname;
     // When the user visits a non-SAT domain, do nothing special. This only
     // ever applies to SAT domains.
     let onion = onion_v3extractFromPossibleSATUrl(url);
@@ -552,6 +553,8 @@ function onHeadersReceived_allowAttestedSATDomainsOnly(details) {
                 "a self-authenticating domain name");
             return;
         }
+    } else {
+        hostname = `${onion}onion.${url.hostname}`;
     }
 
     // The option is enabled if we've gotten here, and we are visiting a SAT
@@ -563,7 +566,7 @@ function onHeadersReceived_allowAttestedSATDomainsOnly(details) {
     //
     // If there's zero list hashes in the returned object, then we will look for
     // a credential in the HTTP headers.
-    let lists = satListsContaining(url.hostname);
+    let lists = satListsContaining(hostname);
     for (hash in lists) {
         log_debug("So far we are allowing", url.hostname, "because it",
             "appears in list", lists[hash].name);
@@ -672,7 +675,7 @@ function onHeadersReceived_allowAttestedSATDomainsOnly(details) {
         }
     }
 
-    log_debug(url.hostname, "is not on any trusted SAT list so disallowing");
+    log_debug(hostname, "is not on any trusted SAT list so disallowing");
 
     return generateRedirect_notOnTrustedSATList(url.hostname);
 
@@ -845,14 +848,14 @@ function onMessage_satDomainList(obj) {
         updateUrl = updateUrl + "/.well-known/sattestation.json";
     }
     if (satUrl) {
-        updateUrl = updateUrl + "?onion=" + onion.onion;
+        updateUrl = updateUrl + "?onion=" + onion.str;
     }
     let hash = sha3_256.create().update(updateUrl).hex();
     if (!(hash in trustedSATLists)) {
         log_debug("Adding", hostname, "to trusted SAT lists");
         trustedSATLists[hash] = new SATList(
             updateUrl, list, false, false, false, null,
-            onion_extractBaseDomain(hostname), wellknown, satUrl);
+            hostname, wellknown, satUrl);
         lsput("trustedSATLists", trustedSATLists);
         setTimeout(updateSATList, SAT_LIST_UPDATE_INTERVAL * 1000, hash);
         return "Thanks (used)";
