@@ -13,7 +13,7 @@
 If
 </p>
 <ol>
-<li>you're visiting one of the pages with "bad" in their names,</li>
+<li>you're visiting one of the pages with "bad" in their names (with the exception of labels),</li>
 <li>you're visting the SAT domain for this website (listed below),
 <li>you're using Firefox 63 (or newer) or Tor Browser 8.5 alpha (or newer), and
 <li>you have our extension installed,
@@ -33,12 +33,13 @@ from visiting the "bad" pages (on FF 63 or newer or TB 8.5 alpha or newer).
     <li>(SAT domain) <a href='https://{onion}onion.{origin}'>{onion}onion.{origin}</a></li>
     <li>(SAT address) <a href='https://{origin}?onion={onion}'>https://{origin}?onion={onion}</a></li>
     <li>(Traditional domain) <a href='https://{origin}'>{origin}</a></li>
-    <li><a href='index.html' target="_blank">/index.html</a></li>
-    <li><a href='good.html' target="_blank">/good.html</a></li>
-    <li><a href='badtime.html' target="_blank">/badtime.html</a></li>
-    <li><a href='badfp.html' target="_blank">/badfp.html</a></li>
-    <li><a href='baddomain.html' target="_blank">/baddomain.html</a></li>
-    <li><a href='badsignature.html' target="_blank">/badsignature.html</a></li>
+    <li><a href='index.html?onion={onion}' target="_blank">/index.html</a></li>
+    <li><a href='good.html?onion={onion}' target="_blank">/good.html</a></li>
+    <li><a href='badtime.html?onion={onion}' target="_blank">/badtime.html</a></li>
+    <li><a href='badfp.html?onion={onion}' target="_blank">/badfp.html</a></li>
+    <li><a href='baddomain.html?onion={onion}' target="_blank">/baddomain.html</a></li>
+    <li><a href='badsignature.html?onion={onion}' target="_blank">/badsignature.html</a></li>
+    <li><a href='badlabel.html?onion={onion}' target="_blank">/badsignature.html</a>(If attestation is required)</li>
 </ul>
 
 <p>
