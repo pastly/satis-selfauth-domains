@@ -496,10 +496,16 @@ async function onHeadersReceived_verifySelfAuthConnection(details) {
             for (let sattestor in lists) {
                 let sattestees = lists[sattestor].list;
                 for (let sattestee of sattestees) {
-                    if (!sattestee.labels) {
+                    if (sattestee.satName != hostname || !sattestee.labels) {
                         continue;
                     }
-                    sattestedLabels.push.apply(sattestedLabels, sattestee.labels);
+                    // Skip duplicates
+                    //sattestedLabels.push.apply(sattestedLabels, sattestee.labels);
+                    for (let label of sattestee.labels) {
+                        if (!sattestedLabels.includes(label)) {
+                            sattestedLabels.push(label);
+                        }
+                    }
                 }
             }
             let foundMatch = false;
