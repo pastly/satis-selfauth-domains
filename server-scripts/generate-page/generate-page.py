@@ -53,8 +53,8 @@ def parse_domain_list_fd(fd):
                 'Subdomain "%s": does not end with "onion"', oniononion)
             continue
         onion = oniononion[:-5]
-        sattestation="sattestee={selfauth_name}:onion={onion}:labels={labels}:valid_after={verified_date}:refreshed_on={refreshed_date}\n"
-        sattestations[trad_name].add(sattestation.format(selfauth_name=selfauth_name, onion=onion, labels=labels, verified_date=verified_date, refreshed_date=refreshed_date))
+        sattestation="domain={trad_name}:onion={onion}:labels={labels}:valid_after={verified_date}:refreshed_on={refreshed_date}\n"
+        sattestations[trad_name].add(sattestation.format(trad_name=trad_name, onion=onion, labels=labels, verified_date=verified_date, refreshed_date=refreshed_date))
 
     num_trad = len(out)
     num_selfauth = len(set().union(*[out[n] for n in out]))
