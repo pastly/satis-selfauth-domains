@@ -349,7 +349,7 @@ fn constructPrettySatObject(hostname: &str, onionaddr: &str, sattestations: &str
   r
 }
 
-fn makeSatList(expandedSecKey: &ExpandedSecretKey, publicKey: &PublicKey, hostname: &str, onionaddr: &str, sattestations: &str, sattestor_labels: &str) {
+fn makeSatList(expandedSecKey: &ExpandedSecretKey, publicKey: &PublicKey, hostname: &str, onionaddr: &str, sattestations: &str, sattestor_labels: &str) -> String {
     let msg = constructPrettySatObject(&hostname, &onionaddr, &sattestations, sattestor_labels);
     let tagged_msg = format!("{}{}", "sattestation-list-v0", msg);
     let sig = expandedSecKey.sign(tagged_msg.as_bytes(), &publicKey).to_bytes();
@@ -358,7 +358,7 @@ fn makeSatList(expandedSecKey: &ExpandedSecretKey, publicKey: &PublicKey, hostna
 
     let b64 = base64::encode(&sig as &[u8]);
 
-    println!("{{\n  \"sattestation\": {},\n  \"signature\": \"{}\"\n}}", msg, b64);
+    format!("{{\n  \"sattestation\": {},\n  \"signature\": \"{}\"\n}}", msg, b64)
 }
 
 fn makeSatTokens(expandedSecKey: &ExpandedSecretKey, publicKey: &PublicKey, hostname: &str, onionaddr: &str, sattestations: &str, sattestor_labels: &str) -> Vec<String> {
@@ -513,7 +513,7 @@ fn makeSatisSig(expandedSecKey: &ExpandedSecretKey, publicKey: &PublicKey,
     println!("Using nonce: {}\n", nonce);
 }
 
-fn write_sig(outdir: &str, path: &str, sig: &str) {
+fn write_file(outdir: &str, path: &str, sig: &str) {
     let fullpath = format!("{}{}", &outdir, path);
     let path = Path::new(&fullpath);
     let display = path.display();
@@ -675,12 +675,12 @@ fn main() {
     const BAD_LABEL: &'static str = "foo";
     let bad_label = makeSatisSigV1(&expandedSecKey, &publicKey, &hostname, &onionaddr, &fingerprint, now, SEVEN_DAY_VALIDITY_PERIOD, nonce, BAD_LABEL);
 
-    write_sig(&outdir, "satis_sig", &good_sig);
-    write_sig(&outdir, "satis_sig_bad_time", &bad_time);
-    write_sig(&outdir, "satis_sig_bad_fp", &bad_fingerprint);
-    write_sig(&outdir, "satis_sig_bad_domain", &bad_domain);
-    write_sig(&outdir, "satis_sig_bad_sig", &bad_sig);
-    write_sig(&outdir, "satis_sig_bad_label", &bad_label);
+    write_file(&outdir, "satis_sig", &good_sig);
+    write_file(&outdir, "satis_sig_bad_time", &bad_time);
+    write_file(&outdir, "satis_sig_bad_fp", &bad_fingerprint);
+    write_file(&outdir, "satis_sig_bad_domain", &bad_domain);
+    write_file(&outdir, "satis_sig_bad_sig", &bad_sig);
+    write_file(&outdir, "satis_sig_bad_label", &bad_label);
 
     if !is_sattestor {
         return;
@@ -688,7 +688,8 @@ fn main() {
 
     let sattestations = sattestations.replace("\n",";");
 
-    makeSatList(&expandedSecKey, &publicKey, &hostname, &onionaddr, &sattestations, &sattestor_labels);
+    let satlist = makeSatList(&expandedSecKey, &publicKey, &hostname, &onionaddr, &sattestations, &sattestor_labels);
+    write_file(&outdir, "sattestation.json", &satlist);
 }
 
 #[cfg(test)]
