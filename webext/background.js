@@ -787,7 +787,6 @@ function onMessage_giveAltSvcs(origin) {
 
 function onMessage_satDomainList(obj) {
     let url = splitURL(obj.url);
-    let labels = obj.labels;
     let list = Array.from(obj.set);
     let wellknown = obj.wellknown;
     let satUrl = obj.satUrl;
