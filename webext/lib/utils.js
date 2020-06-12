@@ -132,7 +132,7 @@ function findSATDomainList(doc) {
 }
 
 function handleSattestations(sat) {
-    if (! "sattestor" in sat) {
+    if (! "sattestor_domain" in sat) {
         log_debug("msg does not contain sattestor");
         return;
     }
@@ -157,18 +157,22 @@ function handleSattestations(sat) {
 
     let satName, baseName;
     if (sat.isSatUrl) {
-        satName = sat.sattestor_onion + "onion." + sat.sattestor;
-        baseName = sat.sattestor;
+        satName = sat.sattestor_onion + "onion." + sat.sattestor_domain;
+        baseName = sat.sattestor_domain;
     } else {
-        satName = sat.sattestor;
-        baseName = onion_extractBaseDomain(sat.sattestor);
+        satName = sat.sattestor_domain;
+        baseName = onion_extractBaseDomain(sat.sattestor_domain);
     }
 
-    out.add({'satName': satName, 'baseName': baseName});
+
+    let sattestor_labels = sat.sattestor_labels.split(",");
+
+    // Declare that this sattestor accepts any labels for which it is trusted
+    out.add({'satName': satName, 'baseName': baseName, 'labels': sattestor_labels});
 
     if ("sattestees" in sat) {
         for (let sattestee of sat.sattestees) {
-            if (! "sattestee" in sattestee) {
+            if (! "domain" in sattestee) {
                 log_debug(`sattestee does not contain sattestee: ${sattestee}`);
                 continue;
             }
@@ -181,14 +185,30 @@ function handleSattestations(sat) {
                 continue;
             }
             let labels = sattestee.labels.split(",");
+
+            let badLabel = false;
+            for (let sattestee_label of labels) {
+                let found = 0;
+                for (let sattestor_label of sattestor_labels) {
+                    if (sattestee_label == sattestor_label) {
+                        found = 1;
+                    }
+                }
+                if (!found) {
+                    log_debug(`${satName} not trusted for label ${sattestee_label}. Skipping.`);
+                    badLabel = true;
+                    break;
+                }
+            }
+            if (badLabel) {
+                continue;
+            }
             // TODO Add labels and valid_after
-            out.add({'satName': sattestee.onion + "onion." + sattestee.sattestee, 'baseName': sattestee.sattestee, 'labels': labels});
+            out.add({'satName': sattestee.onion + "onion." + sattestee.domain, 'baseName': sattestee.domain, 'labels': labels});
         }
     } else {
         log_debug("msg does not contain sattestees");
     }
-
-    let sattestor_labels = sat.sattestor_labels.split(",");
 
     return {"url": sat.url, 'labels': sattestor_labels, "set": out, "wellknown": true, "satUrl": sat.isSatUrl};
 }
