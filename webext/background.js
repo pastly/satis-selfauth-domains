@@ -111,8 +111,8 @@ function generateRedirect_notOnTrustedSATList(urlHostname) {
 function generateRedirect_nullSetAttestedLabel(urlHostname, selfLabels, satLabels, errorMessage) {
     let pageURL = browser.extension.getURL("pages/nullSetAttestedLabel.html");
     pageURL = addParam(pageURL, "domain", urlHostname);
-    pageURL = addParam(pageURL, "selfLabels", selfLabels);
-    pageURL = addParam(pageURL, "satLabels", satLabels);
+    pageURL = addParam(pageURL, "selfLabels", selfLabels.join(","));
+    pageURL = addParam(pageURL, "satLabels", satLabels.join(","));
     pageURL = addParam(pageURL, "error", errorMessage);
     return { "redirectUrl": pageURL };
 }

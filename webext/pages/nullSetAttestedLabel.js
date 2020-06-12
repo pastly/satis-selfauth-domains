@@ -1,16 +1,16 @@
 function setDomain(get) {
     let e = document.getElementById("domain");
-    e.appendChild(document.createTextNode(get.domain));
+    e.appendChild(document.createTextNode(decodeURIComponent(get.domain)));
 }
 
 function setLabelSet(get) {
     let e = document.getElementById("selfLabels");
-    e.appendChild(document.createTextNode(get.selfLabels));
+    e.appendChild(document.createTextNode(decodeURIComponent(get.selfLabels)));
 }
 
 function setSatLabelSet(get) {
     let e = document.getElementById("satLabels");
-    e.appendChild(document.createTextNode(get.satLabels));
+    e.appendChild(document.createTextNode(decodeURIComponent(get.satLabels)));
 }
 
 function setErrorMessage(get) {
