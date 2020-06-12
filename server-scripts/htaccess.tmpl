@@ -6,14 +6,16 @@ Header always set Alt-Svc "h2=\"put-onion-address-here.onion:443\"; ma=3600"
 # Set the valid SAT Sig as the default value
 Header always set X-SAT-SIG M4_SATIS_SIG
 
-# Set error pages
-SetEnvIf Request_Uri "badtime/$" SatSig=M4_SATIS_SIG_BAD_TIME
-SetEnvIf Request_Uri "badfp/$" SatSig=M4_SATIS_SIG_BAD_FP
-SetEnvIf Request_Uri "baddomain/$" SatSig=M4_SATIS_SIG_BAD_DOMAIN
-SetEnvIf Request_Uri "badsig/$" SatSig=M4_SATIS_SIG_BAD_SIG
-SetEnvIf Request_Uri "badlabel/$" SatSig=M4_SATIS_SIG_BAD_LABEL
+# Set error pages, handle request as index.html
+RewriteEngine On
+RewriteRule badtime\.html index.html      [env=SatSig:M4_SATIS_SIG_BAD_TIME]
+RewriteRule badfp\.html index.html        [env=SatSig:M4_SATIS_SIG_BAD_FP]
+RewriteRule baddomain\.html index.html    [env=SatSig:M4_SATIS_SIG_BAD_DOMAIN]
+RewriteRule badsignature\.html index.html [env=SatSig:M4_SATIS_SIG_BAD_SIG]
+RewriteRule badlabel\.html index.html     [env=SatSig:M4_SATIS_SIG_BAD_LABEL]
 
 # Unset SAT Sig header if SatSig is non-null
 Header always unset X-SAT-SIG env=SatSig
-# Set SAT Sig if SatSig is non-null
-Header always set X-SAT-SIG "%{SatSig}e" env=SatSig
+# Set SAT Sig if SatSig is non-null. Environment variable
+# is prefixed with REDIRECT_ after rewrite (internal redirect)
+Header always set X-SAT-SIG "%{REDIRECT_SatSig}e" env=REDIRECT_SatSig
