@@ -407,7 +407,8 @@ fn makeSatisSigV1(expandedSecKey: &ExpandedSecretKey, publicKey: &PublicKey,
     const magic: &'static str = "satis-guard-v1-----";
     const size_of_u64: usize = std::mem::size_of::<u64>();
     const size_of_u32: usize = std::mem::size_of::<u32>();
-    let msg_len: usize = magic.len() + size_of_u64 + size_of_u64 + size_of_u32 + size_of_u32 + hostname.len() + size_of_u32 + fingerprint.len() + size_of_u32 + labels.len();
+    let sata = format!("{}onion.{}", onionaddr, hostname);
+    let msg_len: usize = magic.len() + size_of_u64 + size_of_u64 + size_of_u32 + size_of_u32 + sata.len() + size_of_u32 + fingerprint.len() + size_of_u32 + labels.len();
     let mut satis_msg = Vec::new();
     satis_msg.resize(msg_len, 0);
     let mut satis_msg: &mut [u8] = satis_msg.as_mut_slice();
@@ -417,7 +418,7 @@ fn makeSatisSigV1(expandedSecKey: &ExpandedSecretKey, publicKey: &PublicKey,
     let (msg_validity, buf) = buf.split_at_mut(size_of_u64);
     let (msg_nonce, buf) = buf.split_at_mut(size_of_u32);
     let (msg_hostname_len, buf) = buf.split_at_mut(size_of_u32);
-    let (msg_hostname, buf) = buf.split_at_mut(hostname.len());
+    let (msg_hostname, buf) = buf.split_at_mut(sata.len());
     let (msg_fingerprint_len, buf) = buf.split_at_mut(size_of_u32);
     let (msg_fingerprint , buf) = buf.split_at_mut(fingerprint.len());
     let (msg_labels_len, buf) = buf.split_at_mut(size_of_u32);
@@ -429,8 +430,8 @@ fn makeSatisSigV1(expandedSecKey: &ExpandedSecretKey, publicKey: &PublicKey,
     msg_window.copy_from_slice(&time.to_be_bytes());
     msg_validity.copy_from_slice(&validity_width.to_be_bytes());
     msg_nonce.copy_from_slice(&nonce.to_be_bytes());
-    msg_hostname_len.copy_from_slice(&(hostname.len() as u32).to_be_bytes());
-    msg_hostname.copy_from_slice(hostname.as_bytes());
+    msg_hostname_len.copy_from_slice(&(sata.len() as u32).to_be_bytes());
+    msg_hostname.copy_from_slice(sata.as_bytes());
     msg_fingerprint_len.copy_from_slice(&(fingerprint.len() as u32).to_be_bytes());
     msg_fingerprint.copy_from_slice(fingerprint.as_bytes());
     msg_labels_len.copy_from_slice(&(labels.len() as u32).to_be_bytes());
@@ -470,7 +471,8 @@ fn makeSatisSig(expandedSecKey: &ExpandedSecretKey, publicKey: &PublicKey,
     const magic: &'static str = "satis-guard-----";
     const size_of_u64: usize = std::mem::size_of::<u64>();
     const size_of_u32: usize = std::mem::size_of::<u32>();
-    let msg_len: usize = magic.len() + size_of_u64 + size_of_u64 + size_of_u32 + size_of_u32 + hostname.len() + size_of_u32 + fingerprint.len();
+    let sata = format!("{}onion.{}", onionaddr, hostname);
+    let msg_len: usize = magic.len() + size_of_u64 + size_of_u64 + size_of_u32 + size_of_u32 + sata.len() + size_of_u32 + fingerprint.len();
     let mut satis_msg = Vec::new();
     satis_msg.resize(msg_len, 0);
     let mut satis_msg: &mut [u8] = satis_msg.as_mut_slice();
@@ -480,7 +482,7 @@ fn makeSatisSig(expandedSecKey: &ExpandedSecretKey, publicKey: &PublicKey,
     let (msg_validity, buf) = buf.split_at_mut(size_of_u64);
     let (msg_nonce, buf) = buf.split_at_mut(size_of_u32);
     let (msg_hostname_len, buf) = buf.split_at_mut(size_of_u32);
-    let (msg_hostname, buf) = buf.split_at_mut(hostname.len());
+    let (msg_hostname, buf) = buf.split_at_mut(sata.len());
     let (msg_fingerprint_len, buf) = buf.split_at_mut(size_of_u32);
     let msg_fingerprint = buf;
 
@@ -490,8 +492,8 @@ fn makeSatisSig(expandedSecKey: &ExpandedSecretKey, publicKey: &PublicKey,
     msg_window.copy_from_slice(&time.to_be_bytes());
     msg_validity.copy_from_slice(&validity_width.to_be_bytes());
     msg_nonce.copy_from_slice(&nonce.to_be_bytes());
-    msg_hostname_len.copy_from_slice(&(hostname.len() as u32).to_be_bytes());
-    msg_hostname.copy_from_slice(hostname.as_bytes());
+    msg_hostname_len.copy_from_slice(&(sata.len() as u32).to_be_bytes());
+    msg_hostname.copy_from_slice(sata.as_bytes());
     msg_fingerprint_len.copy_from_slice(&(fingerprint.len() as u32).to_be_bytes());
     msg_fingerprint.copy_from_slice(fingerprint.as_bytes());
 
