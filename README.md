@@ -1,54 +1,25 @@
 # Contents
 
-## satis.system33.pw/
-
-Website files used in the video demonstration
-
 ## webext/
 
-A Firefox web extension for checking SAT domain names.
-
-## Alliuminated domain.webm
-
-A video demonstrating the product of (an older version of) these files. See its
-README for more information. SAT domains used to be called "Alliuminated"
-domains.
+A Firefox web extension for checking SAT addresses (validating signatures,
+retrieving sattestation lists, verifying site sattestations).
 
 ## server-scripts/
 
 Scripts and config templates useful for the managing the server-side. This
-includes an nginx config template and update script, as well as a torrc config
-template and update script.
-
-## tor/
-
-A git submodule pointing to the Tor code that has the necessary changes to
-generate these signatures. If you want to get it manually for some reason, it's
-the branch selfauth-sig-0.3.5.7 at https://github.com/pastly/public-tor
-
-## tor.selfauth-sig-0.3.5.7.tar.xz
-
-The Tor code as of my branch selfauth-sig-0.3.5.7 in case this is easier for
-you than a submodule.
+includes an nginx config template, an apache httpd config, and update script,
+and update scripts.
 
 # Setting Up Client Side (Easy mode)
 
-As of 5 Feb 2019, the extension is signed by Mozilla and able to be installed
-from a signed archive file. You do not have to download this repository to
-install the extension.
+The extension may be installed as a "Temporary Extension" in Firefox and Tor
+Browser by following the instructions under "Load the extension into Firefox".
 
-Simply visit
-https://demos.traudt.xyz/extensions/firefox/sat_domain_tools/ in
-Firefox (and probably Tor Browser, see "Hard mode" section below), select the
-highest-version \*.xpi file, and allow the extension to be installed.
-
-It is configured to auto update.
+The file may be downloaded from:
+https://www.selfauthdomain.info/sata.xpi
 
 # Setting Up Client Side (Hard mode)
-
-At the time of writing (1 Feb 2019) Tor Browser has not been tested recently,
-but it's alpha 8.5.X series is assumed to still be working. Firefox 65 does
-work.
 
 ## Download this repository
 
@@ -72,21 +43,27 @@ https://i.imgur.com/zS4BvGQ.png
 
 ## Verify the extension is working
 
-There is a toy website at https://satis.system33.pw that can be used for
-testing. Visiting that page and then clicking on the extension's onion button
+There is some demo websites available at:
+  - https://sattestorA.selfauthdomain.info
+  - https://sattestee1.selfauthdomain.info
+  - https://sattestorB.selfauth.site
+  - https://sattestee2.selfauth.site
+that can be used for testing. Visiting either sattestorA.selfauthdomain.info or
+https://sattestorB.selfauth.site and then clicking on the extension's onion button
 in the top right should list 1 or 2 Alt-Svc that it has allowed to be passed on
 to the browser.
 
-Visiting the "(NEW)" SAT domain on that page
-https://hllvtjcjomneltczwespyle2ihuaq5hypqaavn3is6a7t2dojuaa6rydonion.satis.system33.pw/
+Visiting the "(NEW)" SAT address on that page
+https://selfauth.site?onion=ilfu36iq3wde4htupfx6kbelsdgm5tnkgjtvyw3ijorqd6tdipekhzqd
 should be allowed to work. Everything should look the same on the page.
 
 When at the SAT domain, visiting one of the bad links (like /baddomain.html)
 should be disallowed.
 
-At the bottom of the page is a list of SAT domains that the owner of
-satis.system33.pw has verified as safe mappings. These are readable by the
-extension.
+At the contains some links to other SAT addresses that the owner of
+selfauth.site has verified as safe mappings. A sattestor's sattestation list is
+available at the /.well-known/sattestion.json resource. For example, at
+https://sattestorA.selfauthdomain.info/.well-known/sattestation.json
 
 To verify the extension has automatically loaded these off the page and into
 memory (NOTE: in a more real version of this extension, it would prompt the
@@ -98,7 +75,7 @@ with 2 domain mappings.
 
 Assumptions:
 
-- Your tor souce code directory is /home/satis/src/tor.
+- Your satsigner souce code directory is /home/satis/src/satsigner.
 - Your traditional domain is example.com.
 - Tor will generate the onion address
   rbxel6kjp4o7hz6fmy7af4nv5vyg37fnwddfxnzxqzss2h7lrkzs4rid.onion for you
@@ -109,39 +86,45 @@ Assumptions:
 
 ## Get and build my branch of Tor
 
-See tor/ or tor.\*.tar.xz for the code. I include a build.sh script.
+## Run satsigner
 
-Don't run Tor yet.
+The program requires 8 parameters:
+  - path to keys
+  - hostname
+  - onion address
+  - fingerprint
+  - self-labels
+  - sattestor labels
+  - in (config) directory
+  - out directory
 
-## Configure Tor (first time)
+The \<path to keys\> is the path to the onion serivce keys (secret and public).
 
-Put the following in your torrc, located at /home/satis/src/tor/torrc
+The \<hostname\> is the DNS name (example.com)
 
-    SocksPort 0
-    DataDirectory data
-    Log notice file data/notice.log
-    Log notice stdout
-    PidFile data/tor.pid
-    HiddenServiceDir data/hs-example.com
-    HiddenServicePort 443
-    HiddenServiceVersion 3
+The \<onion address\> is...the 56 character, base-32 encoded v3 onion address (not
+    including '.onion') (rbxel6kjp4o7hz6fmy7af4nv5vyg37fnwddfxnzxqzss2h7lrkzs4rid)
 
-Run Tor briefly:
+The \<fingerprint\> is the TLS certificate fingerprint
+    (1F897271B61AFF9F581CEFE869E191C1C549C2F552757F96A75215187FA2767B)
 
-    ./src/app/tor -f torrc
+The \<self-labels> is a comma-separated list of labels the site gives itself (such as 'news')
 
-It should run in the foreground without errors, and ctrl-c will kill it.  Don't
-ctrl-c until Tor has logged '[notice] Bootstrapped 100%: Done'
+The \<sattestor labels\> is a comma-separated list of contextual labels for which this site,
+    as a sattestor, is trustworthy
 
-There will now be a hostname file at data/hs-example.com/hostname. This is the
-onion address Tor generated. Take note of it.
+The \<in directory\> is the path to a directory containing a sattestation.csv file
+
+The \<out directory\> is the path to a directory where the SAT headers and
+    sattestation.json should be written
 
 ## Generate a TLS certificate with your SAT domain in it
 
 With the assumptions given at the beginning of this section, your traditional
 domain is example.com and your SAT domain is
 rbxel6kjp4o7hz6fmy7af4nv5vyg37fnwddfxnzxqzss2h7lrkzs4ridonion.example.com.
-(Note the lack of a dot before "onion")
+(Note the lack of a dot before "onion"). The SAT domain format is canonical
+for SAT addresses.
 
 Do whatever is necessary to obtain a TLS certificate with both of these names
 in it. This may mean adding the SAT domain to your example.com nginx config
@@ -149,77 +132,42 @@ file, updating your DNS records, and using Let's Encrypt.
 
 Note the location of your shiny new TLS certificate's fullchain.pem
 
-## Configure Tor (second/final time)
+## Create Signed Headers and Sattestations
 
-We now have everything necessary to reconfigure Tor and run it for real.
+You should now run satsigner periodically, roughly every 6 days. You can run this
+in a cronjob (or use something more sophisticated). You'll need to recompute the
+TLS certificate's digest occasionally.
 
-Replace your torrc (at /home/satis/src/tor/torrc) with the following.
+      ./satsigner /var/lib/tor/example.com example.com rbxel6kjp4o7hz6fmy7af4nv5vyg37fnwddfxnzxqzss2h7lrkzs4rid 1F897271B61AFF9F581CEFE869E191C1C549C2F552757F96A75215187FA2767B science,news science,news satsigner_in/ satsigner_out/
 
-    SocksPort 0
-    DataDirectory data
-    Log notice file data/notice.log
-    PidFile data/tor.pid
-    %include example.com.torrc
+To be specific, the digest is the SHA-256 hash of the DER encoding of the certificate.
 
-(We removed logging to stdout and will now pull HiddenService\* config options
-from the file example.com.torrc)
+      openssl x509 -inform pem -in /etc/letsencrypt/live/example.com/fullchain.pem -outform der | sha256sum | cut -c -64 | tr '[a-z]' '[A-Z]'
 
-Find torrc.tmpl and update-torrc.sh in this repo (in the server-scripts
-directory). The former is the template for example.com.torrc, and the latter
-fills in the template to generate the actual example.com.torrc
+## Tell your webserver about the signed data
 
-Edit the variables at the top of update-torrc.sh to point to your actual
-certificate, domain, torrc template, etc.
+satsigner has generated its signature over the appropriate data in
+satsiger_out. Now that information needs to be included in the webserver's
+configuration file.
 
-Run the script. It should complain about not being able to reload Tor (because
-you haven't started Tor yet, right?). The error should be: 'cat: ...: No such
-file or directory' followed by usage info for the 'kill' command. Anything else
-and there's probably something wrong.
+This repository includes nginx.conf.tmpl, update-satis-sig-nginx-conf.sh,
+htaccess.tmpl, and update-satis-sig-apache-conf.sh (all in server-scripts/) to get this
+data into either nginx or apache. 
 
-Once the script has been run once with only the allowed error, you should find
-example.com.torrc now exists at /home/satis/src/tor/example.com.torrc.  Verify
-it exists, it has your traditional domain (example.com), and it has your TLS
-fingerprint. For example, it should look like this (without comments)
+The nginx config files are not tested.
 
-    HiddenServiceDir data/hs-example.com
-    HiddenServicePort 443
-    HiddenServiceVersion 3
-    HiddenServiceSatisSig 1
-    HiddenServiceSatisDomain example.com
-    HiddenServiceSatisFingerprint 1F897271B61AFF9F581CEFE869E191C1C549C2F552757F96A75215187FA2767B
-    HiddenServiceSatisSigInterval 86400
+### Configure Apache httpd
 
-You should now run Tor continuously in the background. Ideally you wrap it up
-in a script that is run on boot with a cronjob. To just run it in the
-background now:
+1. Edit the update-satis-sig-apache-conf.sh script so the paths at the top of the file are appropriate for your configuration
 
-      ./src/app/tor -f torrc --quiet &
+2. In htaccess.tmpl, edit the alt-svc header so it uses your onion service
 
-After a few seconds, data/notice.log should state
-'[notice] Bootstrapped 100%: Done' followed by log lines stating it has wrote
-some satis sig files.
+3. reload apache
 
-## Tell your webserver aobut the signed data
+       systemctl reload httpd
 
-Tor has generated its signature over the appropriate data in
-data/hs-example.com/satis_sig. This file is just raw bytes, and we need to turn
-that into base64-encoded bytes in an HTTP header that our webserver sends to
-clients.
 
-I use nginx and (at the time of writing) the included nginx.conf.tmpl and
-update-satis-sig-nginx-conf.sh (both in server-scripts/) to get this data into
-my nginx config. These are a little more complex than would be necessary for
-other people, especially if you don't want to use the purposefully bad
-signatures too.
-
-I will now explain the script by walking you through how I would reimplement it
-to be simpler.
-
-### First, to encode the file in base64
-
-    B64_SIG=$(base64 data/hs/satis_sig | while read line; do echo -n $line; done)
-
-### Then, to get that into nginx's config
+### get that into nginx's config (previous instructions, not tested recently)
 
 1. copy my nginx conf into a template I can edit
 
@@ -244,8 +192,6 @@ to be simpler.
 
        systemctl reload nginx
 
-A similar process should be possible with Apache.
-
 Now when people visit example.com, their browser should be getting an X-SAT-Sig
 header. Our extension will be expecting it if they visit
 rbxel6kjp4o7hz6fmy7af4nv5vyg37fnwddfxnzxqzss2h7lrkzs4ridonion.example.com.
@@ -265,3 +211,26 @@ config. As long as your Tor is configured to generate these files much more
 often than they expire, it's not terribly important that the get updated in
 your nginx config immediately. Just make sure it gets done each day as a
 cronjob, for example.
+
+## Older info
+
+## satis.system33.pw/
+
+Website files used in the video demonstration
+
+## Alliuminated domain.webm
+
+A video demonstrating the product of (an older version of) these files. See its
+README for more information. SAT domains used to be called "Alliuminated"
+domains.
+
+## tor/
+
+A git submodule pointing to the Tor code that has the necessary changes to
+generate these signatures. If you want to get it manually for some reason, it's
+the branch selfauth-sig-0.3.5.7 at https://github.com/pastly/public-tor
+
+## tor.selfauth-sig-0.3.5.7.tar.xz
+
+The Tor code as of my branch selfauth-sig-0.3.5.7 in case this is easier for
+you than a submodule.
