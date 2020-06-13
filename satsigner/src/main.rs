@@ -2,17 +2,16 @@ use std::env;
 use std::fs::File;
 use std::io::{Error as IoError, Read, Write as IoWrite, ErrorKind};
 
-use std::error::Error;
-use std::time::{Duration, SystemTime};
+use std::time::SystemTime;
 
 use std::fmt::Write as FmtWrite;
 use std::str;
 
-
-use std::io::BufReader;
 use std::fs::read_to_string;
 
 use std::path::Path;
+
+use rand::prelude::*;
 
 extern crate base64;
 extern crate ed25519_dalek;
@@ -46,8 +45,8 @@ fn parse_tagged_key(typestring: &str, tag: &str, raw_key: &Vec<u8>, keylen: usiz
     let mut raw_key_offset = 0;
     for i in 0..(PREFIX_PREFIX.len()) {
         let raw_key_byte = raw_key.get(raw_key_offset).unwrap();
-        let PREFIX_PREFIX_byte = PREFIX_PREFIX.as_bytes().get(i).unwrap();
-        if raw_key_byte != PREFIX_PREFIX_byte {
+        let prefix_prefix_byte = PREFIX_PREFIX.as_bytes().get(i).unwrap();
+        if raw_key_byte != prefix_prefix_byte {
             return Err(IoError::new(ErrorKind::InvalidData, "invalid prefix prefix"));
         }
         raw_key_offset += 1;
@@ -71,9 +70,9 @@ fn parse_tagged_key(typestring: &str, tag: &str, raw_key: &Vec<u8>, keylen: usiz
     }
     for i in 0..(TAG_SEPARATOR.len()) {
         let raw_key_byte = raw_key.get(raw_key_offset).unwrap();
-        let TAG_SEPARATOR_byte = TAG_SEPARATOR.as_bytes().get(i).unwrap();
-        if raw_key_byte != TAG_SEPARATOR_byte {
-            let msg = format!("invalid tag separator at {}, expected {}, found {}", raw_key_offset, TAG_SEPARATOR_byte, raw_key_byte);
+        let tag_separator_byte = TAG_SEPARATOR.as_bytes().get(i).unwrap();
+        if raw_key_byte != tag_separator_byte {
+            let msg = format!("invalid tag separator at {}, expected {}, found {}", raw_key_offset, tag_separator_byte, raw_key_byte);
             return Err(IoError::new(ErrorKind::InvalidData, msg));
         }
         raw_key_offset += 1;
@@ -97,9 +96,9 @@ fn parse_tagged_key(typestring: &str, tag: &str, raw_key: &Vec<u8>, keylen: usiz
     }
     for i in 0..(PREFIX_SUFFIX.len()) {
         let raw_key_byte = raw_key.get(raw_key_offset).unwrap();
-        let PREFIX_SUFFIX_byte = PREFIX_SUFFIX.as_bytes().get(i).unwrap();
-        if raw_key_byte != PREFIX_SUFFIX_byte {
-            let msg = format!("invalid prefix suffix at {}, expected {}, found {}", raw_key_offset, PREFIX_SUFFIX_byte, raw_key_byte);
+        let prefix_suffix_byte = PREFIX_SUFFIX.as_bytes().get(i).unwrap();
+        if raw_key_byte != prefix_suffix_byte {
+            let msg = format!("invalid prefix suffix at {}, expected {}, found {}", raw_key_offset, prefix_suffix_byte, raw_key_byte);
             return Err(IoError::new(ErrorKind::InvalidData, msg));
         }
         raw_key_offset += 1;
@@ -128,32 +127,32 @@ fn parse_tagged_key(typestring: &str, tag: &str, raw_key: &Vec<u8>, keylen: usiz
 }
 
 fn parse_secret_key(raw_key: &Vec<u8>) -> Result<Vec<u8>, IoError> {
-    const prefix_prefix: &str = "== ";
-    const prefix_suffix: &str = " ==";
-    const typestring: &str = "ed25519v1-secret";
-    const tag_separator: &str = ": ";
-    const tag: &str = "type0";
+    const PREFIX_PREFIX: &str = "== ";
+    const PREFIX_SUFFIX: &str = " ==";
+    const TYPESTRING: &str = "ed25519v1-secret";
+    const TAG_SEPARATOR: &str = ": ";
+    const TAG: &str = "type0";
 
-    if raw_key.len() <= prefix_prefix.len() {
+    if raw_key.len() <= PREFIX_PREFIX.len() {
         return Err(IoError::new(ErrorKind::InvalidData, "invalid length: less than prefix"));
     }
 
     let mut raw_key_offset = 0;
-    for i in 0..(prefix_prefix.len()) {
+    for i in 0..(PREFIX_PREFIX.len()) {
         let raw_key_byte = raw_key.get(raw_key_offset).unwrap();
-        let prefix_prefix_byte = prefix_prefix.as_bytes().get(i).unwrap();
+        let prefix_prefix_byte = PREFIX_PREFIX.as_bytes().get(i).unwrap();
         if raw_key_byte != prefix_prefix_byte {
             return Err(IoError::new(ErrorKind::InvalidData, "invalid prefix prefix"));
         }
         raw_key_offset += 1;
     }
 
-    if raw_key.len() <= raw_key_offset + typestring.len() {
+    if raw_key.len() <= raw_key_offset + TYPESTRING.len() {
         return Err(IoError::new(ErrorKind::InvalidData, "invalid length: less than typestring"));
     }
-    for i in 0..(typestring.len()) {
+    for i in 0..(TYPESTRING.len()) {
         let raw_key_byte = raw_key.get(raw_key_offset).unwrap();
-        let typestring_byte = typestring.as_bytes().get(i).unwrap();
+        let typestring_byte = TYPESTRING.as_bytes().get(i).unwrap();
         if raw_key_byte != typestring_byte {
             let msg = format!("invalid typestring at {}, expected {}, found {}", raw_key_offset, typestring_byte, raw_key_byte);
             return Err(IoError::new(ErrorKind::InvalidData, msg));
@@ -161,12 +160,12 @@ fn parse_secret_key(raw_key: &Vec<u8>) -> Result<Vec<u8>, IoError> {
         raw_key_offset += 1;
     }
 
-    if raw_key.len() <= raw_key_offset + tag_separator.len() {
+    if raw_key.len() <= raw_key_offset + TAG_SEPARATOR.len() {
         return Err(IoError::new(ErrorKind::InvalidData, "invalid length: less than tag separator"));
     }
-    for i in 0..(tag_separator.len()) {
+    for i in 0..(TAG_SEPARATOR.len()) {
         let raw_key_byte = raw_key.get(raw_key_offset).unwrap();
-        let tag_separator_byte = tag_separator.as_bytes().get(i).unwrap();
+        let tag_separator_byte = TAG_SEPARATOR.as_bytes().get(i).unwrap();
         if raw_key_byte != tag_separator_byte {
             let msg = format!("invalid tag separator at {}, expected {}, found {}", raw_key_offset, tag_separator_byte, raw_key_byte);
             return Err(IoError::new(ErrorKind::InvalidData, msg));
@@ -174,12 +173,12 @@ fn parse_secret_key(raw_key: &Vec<u8>) -> Result<Vec<u8>, IoError> {
         raw_key_offset += 1;
     }
 
-    if raw_key.len() <= raw_key_offset + tag.len() {
+    if raw_key.len() <= raw_key_offset + TAG.len() {
         return Err(IoError::new(ErrorKind::InvalidData, "invalid length: less than tag"));
     }
-    for i in 0..(tag.len()) {
+    for i in 0..(TAG.len()) {
         let raw_key_byte = raw_key.get(raw_key_offset).unwrap();
-        let tag_byte = tag.as_bytes().get(i).unwrap();
+        let tag_byte = TAG.as_bytes().get(i).unwrap();
         if raw_key_byte != tag_byte {
             let msg = format!("invalid tag at {}, expected {}, found {}", raw_key_offset, tag_byte, raw_key_byte);
             return Err(IoError::new(ErrorKind::InvalidData, msg));
@@ -187,12 +186,12 @@ fn parse_secret_key(raw_key: &Vec<u8>) -> Result<Vec<u8>, IoError> {
         raw_key_offset += 1;
     }
 
-    if raw_key.len() <= raw_key_offset + prefix_suffix.len() {
+    if raw_key.len() <= raw_key_offset + PREFIX_SUFFIX.len() {
         return Err(IoError::new(ErrorKind::InvalidData, "invalid length: less than prefix suffix"));
     }
-    for i in 0..(prefix_suffix.len()) {
+    for i in 0..(PREFIX_SUFFIX.len()) {
         let raw_key_byte = raw_key.get(raw_key_offset).unwrap();
-        let prefix_suffix_byte = prefix_suffix.as_bytes().get(i).unwrap();
+        let prefix_suffix_byte = PREFIX_SUFFIX.as_bytes().get(i).unwrap();
         if raw_key_byte != prefix_suffix_byte {
             let msg = format!("invalid prefix suffix at {}, expected {}, found {}", raw_key_offset, prefix_suffix_byte, raw_key_byte);
             return Err(IoError::new(ErrorKind::InvalidData, msg));
@@ -246,6 +245,9 @@ fn read_key(path: &str) -> Result<Vec<u8>, IoError> {
                     return Err(e);
                 },
             };
+            if raw_key_len == 0 {
+                println!("File exists but it is empty: {}", path);
+            }
             Ok(raw_key)
         },
     }
@@ -261,10 +263,10 @@ fn read_sattestation(path: &str) -> Result<String, IoError> {
     }
 }
 
-fn printSatTokenContent(indent: &str, sattesteeToken: &Vec<&str>) -> String {
+fn print_sat_token_content(indent: &str, sattestee_token: &Vec<&str>) -> String {
     // Strip leading and trailing '{' and '}'
     let mut content = String::new();
-    sattesteeToken.iter().filter(|&v| v != &"}" || v != &"{").map(|&v| v.replace("=", "\": \"")).for_each(|v| write!(&mut content, "{}\"{}\",\n", indent, v).unwrap());
+    sattestee_token.iter().filter(|&v| v != &"}" || v != &"{").map(|&v| v.replace("=", "\": \"")).for_each(|v| write!(&mut content, "{}\"{}\",\n", indent, v).unwrap());
     // Truncate the final ',' (pop the final new line, and then re-add it)
     content.pop();
     content.pop();
@@ -272,7 +274,7 @@ fn printSatTokenContent(indent: &str, sattesteeToken: &Vec<&str>) -> String {
     content
 }
 
-fn constructSatToken(sattestee: &Vec<&str>) -> Result<String, IoError> {
+fn construct_sat_token(sattestee: &Vec<&str>) -> Result<String, IoError> {
     if sattestee.len() != 5 {
       return Err(IoError::new(ErrorKind::InvalidData, "Sattestee invalid length".to_string()));
     }
@@ -290,20 +292,24 @@ fn constructSatToken(sattestee: &Vec<&str>) -> Result<String, IoError> {
 }
 
 
-fn constructSatTokenHeader(hostname: &str, onionaddr: &str, sattestor_labels: &str, indentation: &str, new_line: &str) -> String {
+fn construct_sat_token_header(hostname: &str, onionaddr: &str, sattestor_labels: &str, indentation: &str, new_line: &str) -> String {
   let mut header = String::new();
-  write!(&mut header, "{}\"sat_list_version\":\"1\",{}", indentation, new_line);
-  write!(&mut header, "{}\"sattestor_domain\":\"{}\",{}", indentation, hostname, new_line);
-  write!(&mut header, "{}\"sattestor_onion\":\"{}\",{}", indentation, onionaddr, new_line);
-  write!(&mut header, "{}\"sattestor_labels\":\"{}\",{}", indentation, sattestor_labels, new_line);
+  write!(&mut header, "{}\"sat_list_version\":\"1\",{}", indentation, new_line)
+      .expect("Writing header failed");
+  write!(&mut header, "{}\"sattestor_domain\":\"{}\",{}", indentation, hostname, new_line)
+      .expect("Writing header failed");
+  write!(&mut header, "{}\"sattestor_onion\":\"{}\",{}", indentation, onionaddr, new_line)
+      .expect("Writing header failed");
+  write!(&mut header, "{}\"sattestor_labels\":\"{}\",{}", indentation, sattestor_labels, new_line)
+      .expect("Writing header failed");
   header
 }
 
-fn constructPrettySatObject(hostname: &str, onionaddr: &str, sattestations: &str, sattestor_labels: &str) -> String {
-  const brace_indentation: [u8; 6] = [0x20; 6];
-  const content_indentation: [u8; 8] = [0x20; 8];
-  let brace_indent: String = String::from_utf8(brace_indentation.to_vec()).unwrap();
-  let content_indent: String = String::from_utf8(content_indentation.to_vec()).unwrap();
+fn construct_pretty_sat_object(hostname: &str, onionaddr: &str, sattestations: &str, sattestor_labels: &str) -> String {
+  const BRACE_INDENTATION: [u8; 6] = [0x20; 6];
+  const CONTENT_INDENTATION: [u8; 8] = [0x20; 8];
+  let brace_indent: String = String::from_utf8(BRACE_INDENTATION.to_vec()).unwrap();
+  let content_indent: String = String::from_utf8(CONTENT_INDENTATION.to_vec()).unwrap();
   let mut sat_list: Vec<String> = Vec::new();
 
   //sattestations.split(":").map(|&s| s.split(",").map(|&v| sat.push_str(&v)).collect()).collect();
@@ -314,7 +320,7 @@ fn constructPrettySatObject(hostname: &str, onionaddr: &str, sattestations: &str
     }
     let mut sat = String::new();
     sat.push_str(&format!("{}{{\n", brace_indent));
-    sat.push_str(&printSatTokenContent(&content_indent, &sattestee));
+    sat.push_str(&print_sat_token_content(&content_indent, &sattestee));
     //sat.push_str(&format!("{}  \"sattestee\":   \"{}\",\n", sat_indent, sattestee[0]));
     //sat.push_str(&format!("{}  \"onion\":       \"{}\",\n", sat_indent, sattestee[1]));
     //sat.push_str(&format!("{}  \"labels\":      \"{{{}}}\",\n", sat_indent, sattestee[2]));
@@ -340,56 +346,56 @@ fn constructPrettySatObject(hostname: &str, onionaddr: &str, sattestations: &str
 //  }}",
 //    hostname, onionaddr, sat).to_string()
 
-  let mut r = format!(
+  let r = format!(
 " {{
 {}    \"sattestees\": {}
   }}",
-  constructSatTokenHeader(hostname, onionaddr, sattestor_labels, "    ", "\n"),
+  construct_sat_token_header(hostname, onionaddr, sattestor_labels, "    ", "\n"),
   sat).to_string();
   r
 }
 
-fn makeSatList(expandedSecKey: &ExpandedSecretKey, publicKey: &PublicKey, hostname: &str, onionaddr: &str, sattestations: &str, sattestor_labels: &str) -> String {
-    let msg = constructPrettySatObject(&hostname, &onionaddr, &sattestations, sattestor_labels);
+fn make_sat_list(expanded_sec_key: &ExpandedSecretKey, public_key: &PublicKey, hostname: &str, onionaddr: &str, sattestations: &str, sattestor_labels: &str) -> String {
+    let msg = construct_pretty_sat_object(&hostname, &onionaddr, &sattestations, sattestor_labels);
     let tagged_msg = format!("{}{}", "sattestation-list-v0", msg);
-    let sig = expandedSecKey.sign(tagged_msg.as_bytes(), &publicKey).to_bytes();
+    let sig = expanded_sec_key.sign(tagged_msg.as_bytes(), &public_key).to_bytes();
 
-    assert!(publicKey.verify(tagged_msg.as_bytes(), &Signature::from_bytes(&sig).unwrap()).is_ok());
+    assert!(public_key.verify(tagged_msg.as_bytes(), &Signature::from_bytes(&sig).unwrap()).is_ok());
 
     let b64 = base64::encode(&sig as &[u8]);
 
     format!("{{\n  \"sattestation\": {},\n  \"signature\": \"{}\"\n}}", msg, b64)
 }
 
-fn makeSatTokens(expandedSecKey: &ExpandedSecretKey, publicKey: &PublicKey, hostname: &str, onionaddr: &str, sattestations: &str, sattestor_labels: &str) -> Vec<String> {
+fn make_sat_tokens(expanded_sec_key: &ExpandedSecretKey, public_key: &PublicKey, hostname: &str, onionaddr: &str, sattestations: &str, sattestor_labels: &str) -> Vec<String> {
   let mut tokens = Vec::new();
   for s in sattestations.split(";") {
     let sattestee: Vec<&str> = s.split(":").collect();
     if sattestee.len() != 5 {
       continue;
     }
-    let mut unsignedToken = String::new();
-    let mut signedToken = String::new();
-    let header = constructSatTokenHeader(hostname, onionaddr, sattestor_labels, "", "");
-    let token = constructSatToken(&sattestee).unwrap();
-    write!(unsignedToken, "{{{}{}}}", header, token);
+    let mut unsigned_token = String::new();
+    let mut signed_token = String::new();
+    let header = construct_sat_token_header(hostname, onionaddr, sattestor_labels, "", "");
+    let token = construct_sat_token(&sattestee).unwrap();
+    write!(unsigned_token, "{{{}{}}}", header, token).expect("Writing unsigned token failed");
 
-    let tagged_token = format!("{}{}", "sattestation-token-v0", unsignedToken);
-    let sig = expandedSecKey.sign(tagged_token.as_bytes(), &publicKey).to_bytes();
+    let tagged_token = format!("{}{}", "sattestation-token-v0", unsigned_token);
+    let sig = expanded_sec_key.sign(tagged_token.as_bytes(), &public_key).to_bytes();
 
-    assert!(publicKey.verify(tagged_token.as_bytes(), &Signature::from_bytes(&sig).unwrap()).is_ok());
+    assert!(public_key.verify(tagged_token.as_bytes(), &Signature::from_bytes(&sig).unwrap()).is_ok());
 
-    let b64Sig = base64::encode(&sig as &[u8]);
+    let b64_sig = base64::encode(&sig as &[u8]);
 
-    write!(signedToken, "{{sattestation:{},signature:{}}}", unsignedToken, b64Sig);
-    let b64Token = base64::encode(&signedToken.as_bytes());
-    tokens.push(b64Token);
+    write!(signed_token, "{{sattestation:{},signature:{}}}", unsigned_token, b64_sig).expect("Writing signed token failed");
+    let b64_token = base64::encode(&signed_token.as_bytes());
+    tokens.push(b64_token);
   }
   tokens
 }
 
 
-fn makeSatisSigV1(expandedSecKey: &ExpandedSecretKey, publicKey: &PublicKey,
+fn make_satis_sig_v1(expanded_sec_key: &ExpandedSecretKey, public_key: &PublicKey,
                 hostname: &str, onionaddr: &str, fingerprint: &str, time: u64,
                 validity_width: u64, nonce: u32, labels: &str) -> String {
     // Format:
@@ -404,29 +410,29 @@ fn makeSatisSigV1(expandedSecKey: &ExpandedSecretKey, publicKey: &PublicKey,
     //  32bit labels str length
     //  varied labels str
     //
-    const magic: &'static str = "satis-guard-v1-----";
-    const size_of_u64: usize = std::mem::size_of::<u64>();
-    const size_of_u32: usize = std::mem::size_of::<u32>();
+    const MAGIC: &'static str = "satis-guard-v1-----";
+    const SIZE_OF_U64: usize = std::mem::size_of::<u64>();
+    const SIZE_OF_U32: usize = std::mem::size_of::<u32>();
     let sata = format!("{}onion.{}", onionaddr, hostname);
-    let msg_len: usize = magic.len() + size_of_u64 + size_of_u64 + size_of_u32 + size_of_u32 + sata.len() + size_of_u32 + fingerprint.len() + size_of_u32 + labels.len();
+    let msg_len: usize = MAGIC.len() + SIZE_OF_U64 + SIZE_OF_U64 + SIZE_OF_U32 + SIZE_OF_U32 + sata.len() + SIZE_OF_U32 + fingerprint.len() + SIZE_OF_U32 + labels.len();
     let mut satis_msg = Vec::new();
     satis_msg.resize(msg_len, 0);
-    let mut satis_msg: &mut [u8] = satis_msg.as_mut_slice();
+    let satis_msg: &mut [u8] = satis_msg.as_mut_slice();
     
-    let (msg_magic, buf) = satis_msg.split_at_mut(magic.len());
-    let (msg_window, buf) = buf.split_at_mut(size_of_u64);
-    let (msg_validity, buf) = buf.split_at_mut(size_of_u64);
-    let (msg_nonce, buf) = buf.split_at_mut(size_of_u32);
-    let (msg_hostname_len, buf) = buf.split_at_mut(size_of_u32);
+    let (msg_magic, buf) = satis_msg.split_at_mut(MAGIC.len());
+    let (msg_window, buf) = buf.split_at_mut(SIZE_OF_U64);
+    let (msg_validity, buf) = buf.split_at_mut(SIZE_OF_U64);
+    let (msg_nonce, buf) = buf.split_at_mut(SIZE_OF_U32);
+    let (msg_hostname_len, buf) = buf.split_at_mut(SIZE_OF_U32);
     let (msg_hostname, buf) = buf.split_at_mut(sata.len());
-    let (msg_fingerprint_len, buf) = buf.split_at_mut(size_of_u32);
+    let (msg_fingerprint_len, buf) = buf.split_at_mut(SIZE_OF_U32);
     let (msg_fingerprint , buf) = buf.split_at_mut(fingerprint.len());
-    let (msg_labels_len, buf) = buf.split_at_mut(size_of_u32);
+    let (msg_labels_len, buf) = buf.split_at_mut(SIZE_OF_U32);
     let msg_labels = buf;
 
     assert_eq!(msg_labels.len(), labels.len());
 
-    msg_magic.copy_from_slice(&magic.as_bytes());
+    msg_magic.copy_from_slice(&MAGIC.as_bytes());
     msg_window.copy_from_slice(&time.to_be_bytes());
     msg_validity.copy_from_slice(&validity_width.to_be_bytes());
     msg_nonce.copy_from_slice(&nonce.to_be_bytes());
@@ -435,16 +441,15 @@ fn makeSatisSigV1(expandedSecKey: &ExpandedSecretKey, publicKey: &PublicKey,
     msg_fingerprint_len.copy_from_slice(&(fingerprint.len() as u32).to_be_bytes());
     msg_fingerprint.copy_from_slice(fingerprint.as_bytes());
     msg_labels_len.copy_from_slice(&(labels.len() as u32).to_be_bytes());
-    let labellen_4: [u8; 4] = [msg_labels_len[0], msg_labels_len[1], msg_labels_len[2], msg_labels_len[3]];
     msg_labels.copy_from_slice(labels.as_bytes());
 
     //let satis_msg = format!("{}{}{}{}{}{}{}{}",
     //                        magic, time, validity_width, nonce, hostname.len(),
     //                        hostname, fingerprint.len(), fingerprint);
 
-    let sig = expandedSecKey.sign(&satis_msg, &publicKey).to_bytes();
+    let sig = expanded_sec_key.sign(&satis_msg, &public_key).to_bytes();
 
-    assert!(publicKey.verify(satis_msg, &Signature::from_bytes(&sig).unwrap()).is_ok());
+    assert!(public_key.verify(satis_msg, &Signature::from_bytes(&sig).unwrap()).is_ok());
 
     let mut signed_msg = Vec::new();
     signed_msg.extend_from_slice(satis_msg);
@@ -455,7 +460,7 @@ fn makeSatisSigV1(expandedSecKey: &ExpandedSecretKey, publicKey: &PublicKey,
     String::from(b64)
 }
 
-fn makeSatisSig(expandedSecKey: &ExpandedSecretKey, publicKey: &PublicKey,
+fn make_satis_sig(expanded_sec_key: &ExpandedSecretKey, public_key: &PublicKey,
                 hostname: &str, onionaddr: &str, fingerprint: &str, time: u64,
                 validity_width: u64, nonce: u32) {
     // Format:
@@ -468,27 +473,27 @@ fn makeSatisSig(expandedSecKey: &ExpandedSecretKey, publicKey: &PublicKey,
     //  32bit fingerprint str length
     //  varied fingerprint str
     //
-    const magic: &'static str = "satis-guard-----";
-    const size_of_u64: usize = std::mem::size_of::<u64>();
-    const size_of_u32: usize = std::mem::size_of::<u32>();
+    const MAGIC: &'static str = "satis-guard-----";
+    const SIZE_OF_U64: usize = std::mem::size_of::<u64>();
+    const SIZE_OF_U32: usize = std::mem::size_of::<u32>();
     let sata = format!("{}onion.{}", onionaddr, hostname);
-    let msg_len: usize = magic.len() + size_of_u64 + size_of_u64 + size_of_u32 + size_of_u32 + sata.len() + size_of_u32 + fingerprint.len();
+    let msg_len: usize = MAGIC.len() + SIZE_OF_U64 + SIZE_OF_U64 + SIZE_OF_U32 + SIZE_OF_U32 + sata.len() + SIZE_OF_U32 + fingerprint.len();
     let mut satis_msg = Vec::new();
     satis_msg.resize(msg_len, 0);
-    let mut satis_msg: &mut [u8] = satis_msg.as_mut_slice();
+    let satis_msg: &mut [u8] = satis_msg.as_mut_slice();
     
-    let (msg_magic, buf) = satis_msg.split_at_mut(magic.len());
-    let (msg_window, buf) = buf.split_at_mut(size_of_u64);
-    let (msg_validity, buf) = buf.split_at_mut(size_of_u64);
-    let (msg_nonce, buf) = buf.split_at_mut(size_of_u32);
-    let (msg_hostname_len, buf) = buf.split_at_mut(size_of_u32);
+    let (msg_magic, buf) = satis_msg.split_at_mut(MAGIC.len());
+    let (msg_window, buf) = buf.split_at_mut(SIZE_OF_U64);
+    let (msg_validity, buf) = buf.split_at_mut(SIZE_OF_U64);
+    let (msg_nonce, buf) = buf.split_at_mut(SIZE_OF_U32);
+    let (msg_hostname_len, buf) = buf.split_at_mut(SIZE_OF_U32);
     let (msg_hostname, buf) = buf.split_at_mut(sata.len());
-    let (msg_fingerprint_len, buf) = buf.split_at_mut(size_of_u32);
+    let (msg_fingerprint_len, buf) = buf.split_at_mut(SIZE_OF_U32);
     let msg_fingerprint = buf;
 
     assert_eq!(msg_fingerprint.len(), fingerprint.len());
 
-    msg_magic.copy_from_slice(&magic.as_bytes());
+    msg_magic.copy_from_slice(&MAGIC.as_bytes());
     msg_window.copy_from_slice(&time.to_be_bytes());
     msg_validity.copy_from_slice(&validity_width.to_be_bytes());
     msg_nonce.copy_from_slice(&nonce.to_be_bytes());
@@ -501,9 +506,9 @@ fn makeSatisSig(expandedSecKey: &ExpandedSecretKey, publicKey: &PublicKey,
     //                        magic, time, validity_width, nonce, hostname.len(),
     //                        hostname, fingerprint.len(), fingerprint);
 
-    let sig = expandedSecKey.sign(&satis_msg, &publicKey).to_bytes();
+    let sig = expanded_sec_key.sign(&satis_msg, &public_key).to_bytes();
 
-    assert!(publicKey.verify(satis_msg, &Signature::from_bytes(&sig).unwrap()).is_ok());
+    assert!(public_key.verify(satis_msg, &Signature::from_bytes(&sig).unwrap()).is_ok());
 
     let mut signed_msg = Vec::new();
     signed_msg.extend_from_slice(satis_msg);
@@ -522,13 +527,13 @@ fn write_file(outdir: &str, path: &str, sig: &str) {
 
     // Open a file in write-only mode, returns `io::Result<File>`
     let mut file = match File::create(&path) {
-        Err(why) => panic!("couldn't create {}: {}", display, why.description()),
+        Err(why) => panic!("couldn't create {}: {}", display, why.to_string()),
         Ok(file) => file,
     };
 
     // Write the `LOREM_IPSUM` string to `file`, returns `io::Result<()>`
     match file.write_all(sig.as_bytes()) {
-        Err(why) => panic!("couldn't write to {}: {}", display, why.description()),
+        Err(why) => panic!("couldn't write to {}: {}", display, why.to_string()),
         Ok(_) => println!("successfully wrote to {}", display),
     }
 }
@@ -558,18 +563,7 @@ fn main() {
     let public_key_file_path = format!("{}{}{}", path, KEY_FILE_PREFIX, PUBLIC_KEY_FILE_SUFFIX);
     let sattestation_file_path = format!("{}{}", indir, SATTESTATION_CSV);
 
-    let mut sk_file: File = match open_key_file(secret_key_file_path.clone()) {
-        Ok(v) => v,
-        Err(e) => {
-            println!("Error opening file: {}: {:?}", secret_key_file_path, e);
-            return;
-        },
-    };
-
-    let mut raw_public_key = Vec::new();
-    let mut raw_secret_key = Vec::new();
-
-    raw_public_key = match read_to_string(public_key_file_path.clone()) {
+    let raw_public_key = match read_to_string(public_key_file_path.clone()) {
         Ok(s) => Vec::from(s.as_bytes()),
         Err(e) => {
             //println!("Error reading file: {}: {:?}", public_key_file_path, e);
@@ -592,11 +586,14 @@ fn main() {
                     return;
                 },
             };
+            if raw_public_key_len == 0 {
+                println!("Read from file but it is empty: {}", public_key_file_path);
+            }
             raw_public_key
         }
     };
 
-    raw_secret_key = match read_key(&secret_key_file_path.clone()) {
+    let raw_secret_key = match read_key(&secret_key_file_path.clone()) {
         Ok(s) => s,
         Err(e) => {
             println!("Error reading file: {}: {:?}", secret_key_file_path, e);
@@ -620,7 +617,7 @@ fn main() {
         }
     };
 
-    let expandedSecKey = match ExpandedSecretKey::from_bytes(&seckey[..]) {
+    let expanded_sec_key = match ExpandedSecretKey::from_bytes(&seckey[..]) {
         Ok(k) => k,
         Err(r) => {
             println!("Expanded Secret Key was not valid: {:?}", r);
@@ -628,7 +625,7 @@ fn main() {
         }
     };
 
-    let publicKey = match PublicKey::from_bytes(&pubkey[..]) {
+    let public_key = match PublicKey::from_bytes(&pubkey[..]) {
         Ok(k) => k,
         Err(r) => {
             println!("Public Key was not valid: {:?}", r);
@@ -648,26 +645,19 @@ fn main() {
         },
     };
 
-    for s in sattestations.split(";") {
-      if s.len() == 0 {
-          continue;
-      }
-      let sattestee: Vec<&str> = s.split(":").collect();
-    }
-
     let now: u64 = now();
     const SEVEN_DAY_VALIDITY_PERIOD: u64 = 60*60*24*7;
-    const nonce: u32 = 5;
-    let good_sig = makeSatisSigV1(&expandedSecKey, &publicKey, &hostname, &onionaddr, &fingerprint, now, SEVEN_DAY_VALIDITY_PERIOD, nonce, &self_labels);
+    let nonce: u32 = rand::thread_rng().next_u32();
+    let good_sig = make_satis_sig_v1(&expanded_sec_key, &public_key, &hostname, &onionaddr, &fingerprint, now, SEVEN_DAY_VALIDITY_PERIOD, nonce, &self_labels);
 
     const BAD_FINGERPRINT: &'static str = "DEADBEEF111111111111";
-    let bad_fingerprint = makeSatisSigV1(&expandedSecKey, &publicKey, &hostname, &onionaddr, BAD_FINGERPRINT, now, SEVEN_DAY_VALIDITY_PERIOD, nonce, &self_labels);
+    let bad_fingerprint = make_satis_sig_v1(&expanded_sec_key, &public_key, &hostname, &onionaddr, BAD_FINGERPRINT, now, SEVEN_DAY_VALIDITY_PERIOD, nonce, &self_labels);
 
     const BAD_TIME_CENTER: u64 = 9;
-    let bad_time = makeSatisSigV1(&expandedSecKey, &publicKey, &hostname, &onionaddr, &fingerprint, BAD_TIME_CENTER, SEVEN_DAY_VALIDITY_PERIOD, nonce, &self_labels);
+    let bad_time = make_satis_sig_v1(&expanded_sec_key, &public_key, &hostname, &onionaddr, &fingerprint, BAD_TIME_CENTER, SEVEN_DAY_VALIDITY_PERIOD, nonce, &self_labels);
 
     const BAD_DOMAIN: &'static str = "example.com";
-    let bad_domain = makeSatisSigV1(&expandedSecKey, &publicKey, &BAD_DOMAIN, &onionaddr, &fingerprint, now, SEVEN_DAY_VALIDITY_PERIOD, nonce, &self_labels);
+    let bad_domain = make_satis_sig_v1(&expanded_sec_key, &public_key, &BAD_DOMAIN, &onionaddr, &fingerprint, now, SEVEN_DAY_VALIDITY_PERIOD, nonce, &self_labels);
 
     let mut bad_sig = good_sig.clone();
     let middle = bad_sig.len()/2;
@@ -675,7 +665,7 @@ fn main() {
     bad_sig.insert(middle-1, c);
 
     const BAD_LABEL: &'static str = "foo";
-    let bad_label = makeSatisSigV1(&expandedSecKey, &publicKey, &hostname, &onionaddr, &fingerprint, now, SEVEN_DAY_VALIDITY_PERIOD, nonce, BAD_LABEL);
+    let bad_label = make_satis_sig_v1(&expanded_sec_key, &public_key, &hostname, &onionaddr, &fingerprint, now, SEVEN_DAY_VALIDITY_PERIOD, nonce, BAD_LABEL);
 
     write_file(&outdir, "satis_sig", &good_sig);
     write_file(&outdir, "satis_sig_bad_time", &bad_time);
@@ -690,7 +680,7 @@ fn main() {
 
     let sattestations = sattestations.replace("\n",";");
 
-    let satlist = makeSatList(&expandedSecKey, &publicKey, &hostname, &onionaddr, &sattestations, &sattestor_labels);
+    let satlist = make_sat_list(&expanded_sec_key, &public_key, &hostname, &onionaddr, &sattestations, &sattestor_labels);
     write_file(&outdir, "sattestation.json", &satlist);
 }
 
@@ -704,28 +694,28 @@ mod tests {
       let hostname = "sata.example.org";
       let onionaddr = "l4yxbgn74e6ukw6zv3jojaf6bkqlgea2ny37ocry2i4xartdjkqqxwid";
       let sattestations = String::from("domain=satis.system33.pw:onion=hllvtjcjomneltczwespyle2ihuaq5hypqaavn3is6a7t2dojuaa6ryd:labels=news:valid_after=2020-04-30:refreshed_on=2020-05-15");
-      let secretKey = "PT0gZWQyNTUxOXYxLXNlY3JldDogdHlwZTAgPT0AAAC4pxnkg/1N6OIt/KdRPJPvvXcyNBvRzMlBGb7rjZ0GZ0qVldDtwQFJ13OMkPAPORHbeSsY5izrIFyRVye/ifoI";
-      let publicKey = "PT0gZWQyNTUxOXYxLXB1YmxpYzogdHlwZTAgPT0AAABfMXCZv+E9RVvZrtLkgL4KoLMQGm439wo40jlwRmNKoQ==";
+      let secret_key = "PT0gZWQyNTUxOXYxLXNlY3JldDogdHlwZTAgPT0AAAC4pxnkg/1N6OIt/KdRPJPvvXcyNBvRzMlBGb7rjZ0GZ0qVldDtwQFJ13OMkPAPORHbeSsY5izrIFyRVye/ifoI";
+      let public_key = "PT0gZWQyNTUxOXYxLXB1YmxpYzogdHlwZTAgPT0AAABfMXCZv+E9RVvZrtLkgL4KoLMQGm439wo40jlwRmNKoQ==";
 
       let sattestee: Vec<&str> = sattestations.split(":").collect();
 
-      let satTokenContent = printSatTokenContent(" ", &sattestee);
-      let expected_TokenContent = " \"domain\": \"satis.system33.pw\",
+      let sat_token_content = print_sat_token_content(" ", &sattestee);
+      let expected_token_content = " \"domain\": \"satis.system33.pw\",
  \"onion\": \"hllvtjcjomneltczwespyle2ihuaq5hypqaavn3is6a7t2dojuaa6ryd\",
  \"labels\": \"news\",
  \"valid_after\": \"2020-04-30\",
  \"refreshed_on\": \"2020-05-15\"\n";
-      assert_eq!(expected_TokenContent, satTokenContent);
+      assert_eq!(expected_token_content, sat_token_content);
 
-      let satTokenHeader = constructSatTokenHeader(hostname, onionaddr, "*", " ", "\n");
-      let expected_TokenHeader = " \"sat_list_version\":\"1\",
+      let sat_token_header = construct_sat_token_header(hostname, onionaddr, "*", " ", "\n");
+      let expected_token_header = " \"sat_list_version\":\"1\",
  \"sattestor_domain\":\"sata.example.org\",
  \"sattestor_onion\":\"l4yxbgn74e6ukw6zv3jojaf6bkqlgea2ny37ocry2i4xartdjkqqxwid\",
  \"sattestor_labels\":\"*\",\n";
-      assert_eq!(expected_TokenHeader, satTokenHeader);
+      assert_eq!(expected_token_header, sat_token_header);
 
-      let msg = constructPrettySatObject(&hostname, &onionaddr, &sattestations, "*");
-      let expected_SatObject = format!(" {{
+      let msg = construct_pretty_sat_object(&hostname, &onionaddr, &sattestations, "*");
+      let expected_sat_object = format!(" {{
     \"sat_list_version\":\"1\",
     \"sattestor_domain\":\"{}\",
     \"sattestor_onion\":\"{}\",
@@ -740,14 +730,14 @@ mod tests {
       }}
     ]
   }}", hostname, onionaddr);
-      assert_eq!(expected_SatObject, msg);
+      assert_eq!(expected_sat_object, msg);
 
-      let satToken = constructSatToken(&sattestee).unwrap();
-      let expected_Token = "\"domain\":\"satis.system33.pw\",\"onion\":\"hllvtjcjomneltczwespyle2ihuaq5hypqaavn3is6a7t2dojuaa6ryd\",\"labels\":\"news\",\"valid_after\":\"2020-04-30\",\"refreshed_on\":\"2020-05-15\"";
-      assert_eq!(expected_Token, satToken);
+      let sat_token = construct_sat_token(&sattestee).unwrap();
+      let expected_token = "\"domain\":\"satis.system33.pw\",\"onion\":\"hllvtjcjomneltczwespyle2ihuaq5hypqaavn3is6a7t2dojuaa6ryd\",\"labels\":\"news\",\"valid_after\":\"2020-04-30\",\"refreshed_on\":\"2020-05-15\"";
+      assert_eq!(expected_token, sat_token);
 
-      let raw_secret_key = base64::decode(secretKey.as_bytes()).unwrap();
-      let raw_public_key = base64::decode(publicKey.as_bytes()).unwrap();
+      let raw_secret_key = base64::decode(secret_key.as_bytes()).unwrap();
+      let raw_public_key = base64::decode(public_key.as_bytes()).unwrap();
 
       // 32-byte header, 64-byte key
       assert_eq!(raw_secret_key.len(), 96);
@@ -773,7 +763,7 @@ mod tests {
       assert_eq!(seckey.len(), 64);
       assert_eq!(pubkey.len(), 32);
 
-      let expandedSecKey = match ExpandedSecretKey::from_bytes(&seckey) {
+      let expanded_sec_key = match ExpandedSecretKey::from_bytes(&seckey) {
           Ok(k) => k,
           Err(r) => {
               assert!(false, "Expanded Secret Key was not valid: {:?}", r);
@@ -781,7 +771,7 @@ mod tests {
           }
       };
 
-      let publicKey = match PublicKey::from_bytes(&pubkey) {
+      let public_key = match PublicKey::from_bytes(&pubkey) {
           Ok(k) => k,
           Err(r) => {
               assert!(false, "Public Key was not valid: {:?}", r);
@@ -789,26 +779,26 @@ mod tests {
           }
       };
 
-      let satTokens = makeSatTokens(&expandedSecKey, &publicKey, hostname, onionaddr, &sattestations, "*");
+      let sat_tokens = make_sat_tokens(&expanded_sec_key, &public_key, hostname, onionaddr, &sattestations, "*");
 
-      assert!(satTokens.len() > 0);
+      assert!(sat_tokens.len() > 0);
         
-      let expected_UnsignedSatTokens = "{\"sat_list_version\":\"1\",\"sattestor_domain\":\"sata.example.org\",\"sattestor_onion\":\"l4yxbgn74e6ukw6zv3jojaf6bkqlgea2ny37ocry2i4xartdjkqqxwid\",\"sattestor_labels\":\"*\",\"domain\":\"satis.system33.pw\",\"onion\":\"hllvtjcjomneltczwespyle2ihuaq5hypqaavn3is6a7t2dojuaa6ryd\",\"labels\":\"news\",\"valid_after\":\"2020-04-30\",\"refreshed_on\":\"2020-05-15\"}";
+      let expected_unsigned_sat_tokens = "{\"sat_list_version\":\"1\",\"sattestor_domain\":\"sata.example.org\",\"sattestor_onion\":\"l4yxbgn74e6ukw6zv3jojaf6bkqlgea2ny37ocry2i4xartdjkqqxwid\",\"sattestor_labels\":\"*\",\"domain\":\"satis.system33.pw\",\"onion\":\"hllvtjcjomneltczwespyle2ihuaq5hypqaavn3is6a7t2dojuaa6ryd\",\"labels\":\"news\",\"valid_after\":\"2020-04-30\",\"refreshed_on\":\"2020-05-15\"}";
 
-      let expected_TaggedToken = format!("{}{}", "sattestation-token-v0", expected_UnsignedSatTokens);
-      let expected_Sig = expandedSecKey.sign(expected_TaggedToken.as_bytes(), &publicKey).to_bytes();
+      let expected_tagged_token = format!("{}{}", "sattestation-token-v0", expected_unsigned_sat_tokens);
+      let expected_sig = expanded_sec_key.sign(expected_tagged_token.as_bytes(), &public_key).to_bytes();
 
-      assert!(publicKey.verify(expected_TaggedToken.as_bytes(), &Signature::from_bytes(&expected_Sig).unwrap()).is_ok());
+      assert!(public_key.verify(expected_tagged_token.as_bytes(), &Signature::from_bytes(&expected_sig).unwrap()).is_ok());
 
-      let b64Sig = base64::encode(&expected_Sig[..]);
-      let expected_SignedToken = format!("{{sattestation:{},signature:{}}}", expected_UnsignedSatTokens, b64Sig);
-      let expected_B64Token = base64::encode(&expected_SignedToken);
+      let b64_sig = base64::encode(&expected_sig[..]);
+      let expected_signed_token = format!("{{sattestation:{},signature:{}}}", expected_unsigned_sat_tokens, b64_sig);
+      let expected_b64_token = base64::encode(&expected_signed_token);
 
 
-      let expected_DecodedToken = base64::decode(expected_B64Token.clone()).unwrap();
-      let decodedToken = base64::decode(satTokens[0].clone()).unwrap();
-      assert_eq!(String::from_utf8(expected_DecodedToken).unwrap(), String::from_utf8(decodedToken).unwrap());
+      let expected_decoded_token = base64::decode(expected_b64_token.clone()).unwrap();
+      let decoded_token = base64::decode(sat_tokens[0].clone()).unwrap();
+      assert_eq!(String::from_utf8(expected_decoded_token).unwrap(), String::from_utf8(decoded_token).unwrap());
 
-      assert_eq!(expected_B64Token, satTokens[0].clone());
+      assert_eq!(expected_b64_token, sat_tokens[0].clone());
     }
 }
