@@ -5,6 +5,7 @@
     "description": "Self-authenticating Traditional domains weave self-authentication into the web",
     "browser_specific_settings": {
         "gecko": {
+            "id": "sat-domain-tools@example.com",
             "strict_min_version": "63.0",
             "update_url": "https://demos.traudt.xyz/extensions/firefox/sat_domain_tools/updates.json"
         }

@@ -693,6 +693,10 @@ async function onHeadersReceived_cacheSecurityInfo(details) {
     secInfoCache[url].secInfo = await tryGetSecurityInfo(details.requestId);
 }
 
+/**
+ * Given example.com, see if there is a SAT Domain (aaaaaa.example.com) we know
+ * of and trust.
+ */
 function findRewriteSATDomain(baseDomain) {
     let d = lsget("trustedSATLists") || {};
     for (h in d) {
@@ -713,8 +717,8 @@ function findRewriteSATDomain(baseDomain) {
 }
 
 function onBeforeRequest_rewriteSATDomains(details) {
-    log_debug("onBeforeRequest: requestId: ", details.requestId);
-    log_debug("onBeforeRequest: url: ", details.url);
+    //log_debug("onBeforeRequest: requestId: ", details.requestId);
+    //log_debug("onBeforeRequest: url: ", details.url);
     return new Promise((resolve, reject) => {
         try {
             let url = splitURL(details.url);
@@ -723,6 +727,33 @@ function onBeforeRequest_rewriteSATDomains(details) {
                 let newUrl = url.href.replace(url.hostname, satDomain);
                 resolve({"redirectUrl": newUrl});
             } else {
+                resolve({"cancel": false});
+            }
+        } catch (e) {
+            log_error(e);
+            reject(e);
+        }
+    });
+}
+
+/**
+ * Rewrite aaaaaaa.example.com or example.com?onion=aaaaaa to aaaaaa.onion.
+ */
+function onBeforeRequest_rewriteSATDomains2(details) {
+    log_debug("onBeforeRequest: requestId ", details.requestId, " url: ", details.url);
+    return new Promise((resolve, reject) => {
+        try {
+            let url = splitURL(details.url);
+            let onion = onion_v3extractFromPossibleSATDomain(url.hostname) ||
+                onion_v3extractFromPossibleSATUrl(url);
+            if (onion && `${onion}.onion` != url.hostname) {
+                // XXX don't *always* redirect to the onion service, just when
+                // it's trusted
+                let newUrl = url.href.replace(url.hostname, `${onion}.onion`);
+                log_debug(`${url} is a SATA domain or url. Redirecting to ${newUrl}`);
+                resolve({"redirectUrl": newUrl});
+            } else {
+                log_debug(url, " does not seem to be a SATA domain or url");
                 resolve({"cancel": false});
             }
         } catch (e) {
@@ -1165,8 +1196,16 @@ function addEventListeners() {
         {urls: ["<all_urls>"]},
         ["blocking", "responseHeaders"]
     );
+    // rewrite example.com --> aaaaaaa.example.com
     browser.webRequest.onBeforeRequest.addListener(
         onBeforeRequest_rewriteSATDomains,
+        {urls: ["<all_urls>"]},
+        ["blocking"]
+    );
+    // rewrite aaaaaaa.example.com --> aaaaaa.onion, which TB should notice and
+    // hide
+    browser.webRequest.onBeforeRequest.addListener(
+        onBeforeRequest_rewriteSATDomains2,
         {urls: ["<all_urls>"]},
         ["blocking"]
     );
